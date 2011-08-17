@@ -42,15 +42,17 @@ metaonly module Platform inherits xdc.platform.IPlatform {
             catalogName:    "ti.catalog.c6000",
             deviceName:     "OMAP4430",
             externalMemoryMap: [
-                ["EXT_RAM", {name: "EXT_RAM", base: 0x80200000, len: 0x00100000, space: "code/data",access: "RWX"}],
-                ["SHARED", {name: "SHARED", base: 0x86000000, len: 0x02000000, space: "code/data",access: "RWX"}],
+                ["EXT_CODE",  {name: "EXT_CODE",  base: 0x20000000, len: 0x00100000, space: "code", access: "RWX"}],
+                ["EXT_DATA",  {name: "EXT_DATA",  base: 0x80000000, len: 0x00100000, space: "data", access: "RW"}],
+                ["EXT_HEAP",  {name: "EXT_HEAP",  base: 0x80100000, len: 0x002E0000, space: "data", access: "RW"}],
+                ["PM_DATA",   {name: "PM_DATA",   base: 0x803E0000, len: 0x00020000, space: "data", access: "RWX"}],
             ],
     });
 
 instance :
 
-    override config string codeMemory = "EXT_RAM";
-    override config string dataMemory = "EXT_RAM";
-    override config string stackMemory = "EXT_RAM";
 
+    override config string codeMemory = "EXT_CODE";
+    override config string dataMemory = "EXT_DATA";
+    override config string stackMemory = "EXT_DATA";
 }
