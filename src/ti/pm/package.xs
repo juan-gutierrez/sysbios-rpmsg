@@ -33,6 +33,15 @@
  *  ======== package.xs ========
  */
 
+ /*
+ *  ======== init ========
+ */
+ function init()
+ {
+    if (Program.build.target.name.match(/C64T/)) {
+        var Power = xdc.useModule('ti.sysbios.family.c64p.tesla.Power');
+    }
+}
 /*
  *  ======== close ========
  */
