@@ -69,6 +69,11 @@
 #include <ti/resources/rsc_table.h>
 #endif
 
+/* Dsp has its own resource table */
+#if DSP
+#include <ti/resources/rsc_dsp_table.h>
+#endif
+
 /* Turn on/off printf's */
 #define CHATTER 0
 
@@ -220,7 +225,7 @@ Int main(Int argc, char* argv[])
 
     System_printf("%s starting..\n", MultiProc_getName(MultiProc_self()));
 
-#if CORE0
+#if (CORE0 || DSP)
     System_printf("%d resources at 0x%x\n",
                   sizeof(resources) / sizeof(struct resource), resources);
 #endif
