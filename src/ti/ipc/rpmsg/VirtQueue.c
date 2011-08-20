@@ -66,7 +66,7 @@
 #include <ti/sysbios/BIOS.h>
 #include <ti/sysbios/hal/Cache.h>
 
-#include <ti/ipc/rpmsg/InterruptM3.h>
+#include <ti/ipc/rpmsg/InterruptProxy.h>
 #include <ti/ipc/rpmsg/VirtQueue.h>
 #include <ti/pm/IpcPower.h>
 
@@ -222,7 +222,7 @@ Void VirtQueue_kick(VirtQueue_Handle vq)
     Log_print2(Diags_USER1,
             "VirtQueue_kick: Sending interrupt to proc %d with payload 0x%x\n",
             (IArg)vq->procId, (IArg)vq->id);
-    InterruptM3_intSend(vq->procId, vq->id);
+    InterruptProxy_intSend(vq->procId, vq->id);
 }
 
 /*!
@@ -373,7 +373,7 @@ Void VirtQueue_isr(UArg msg)
                 return;
 
             case (UInt)RP_MBOX_ECHO_REQUEST:
-                InterruptM3_intSend(hostProcId, (UInt)(RP_MBOX_ECHO_REPLY));
+                InterruptProxy_intSend(hostProcId, (UInt)(RP_MBOX_ECHO_REPLY));
                 return;
 
             case (UInt)RP_MBOX_ABORT_REQUEST:
@@ -390,18 +390,18 @@ Void VirtQueue_isr(UArg msg)
 
             case (UInt)RP_MSG_HIBERNATION:
                 if (!VirtQueue_maySuspend()) {
-                       InterruptM3_intSend(hostProcId,
+                       InterruptProxy_intSend(hostProcId,
                                            (UInt)RP_MSG_HIBERNATION_CANCEL);
                        return;
                 }
             case (UInt)RP_MSG_HIBERNATION_FORCE:
                 /* Notify Core1 */
                 if (isRunningCpu1()) {
-                    InterruptM3_intSend(appm3ProcId,
+                    InterruptProxy_intSend(appm3ProcId,
                                         (UInt)(RP_MSG_HIBERNATION));
                 }
                 /* Ack request */
-                InterruptM3_intSend(hostProcId, (UInt)RP_MSG_HIBERNATION_ACK);
+                InterruptProxy_intSend(hostProcId, (UInt)RP_MSG_HIBERNATION_ACK);
                 IpcPower_suspend();
                 return;
 
@@ -421,7 +421,7 @@ Void VirtQueue_isr(UArg msg)
     }
 
     if (MultiProc_self() == sysm3ProcId && (msg == ID_A9_TO_APPM3 || msg == ID_APPM3_TO_A9)) {
-        InterruptM3_intSend(appm3ProcId, (UInt)msg);
+        InterruptProxy_intSend(appm3ProcId, (UInt)msg);
     }
     else {
         vq = queueRegistry[msg];
@@ -512,9 +512,9 @@ Void VirtQueue_startup()
     if (MultiProc_self() == dspProcId) {
     }
     else if (MultiProc_self() == sysm3ProcId)
-        InterruptM3_intRegister(VirtQueue_isr);
+        InterruptProxy_intRegister(VirtQueue_isr);
     else if (MultiProc_self() == appm3ProcId)
-        InterruptM3_intRegister(VirtQueue_isr);
+        InterruptProxy_intRegister(VirtQueue_isr);
 }
 
 /*!
@@ -523,7 +523,7 @@ Void VirtQueue_startup()
 Void postCrashToMailbox(Error_Block * eb)
 {
     Error_print(eb);
-    InterruptM3_intSend(0, (UInt)RP_MSG_MBOX_CRASH);
+    InterruptProxy_intSend(0, (UInt)RP_MSG_MBOX_CRASH);
 }
 
 
