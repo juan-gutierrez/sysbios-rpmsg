@@ -55,14 +55,11 @@
 
 #define DSPEVENTID              5
 
-/* Assigned mailboxes */
 #define SYSM3_MBX               0
-#define HOST_MBX_0              1
-
-#define HOST_MBX_1              2
-#define APPM3_MBX               3
-
-#define DSP_MBX                 4
+#define HOST_MBX_FROM_M3        1
+#define APPM3_MBX               2
+#define DSP_MBX                 3
+#define HOST_MBX                4
 
 #define MAILBOX_BASEADDR    (0x4A0F4000)
 
@@ -141,14 +138,13 @@ Void InterruptDsp_intRegister(Hwi_FuncPtr fxn)
     Hwi_Params  hwiAttrs;
     UInt        key;
 
-    while (InterruptDsp_intClear() != (UInt)-1);
 
     userFxn = fxn;
 
     /* Disable global interrupts */
     key = Hwi_disable();
 
-    InterruptDsp_intClear();
+    REG32(MAILBOX_IRQSTATUS_CLR_DSP) = MAILBOX_REG_VAL(DSP_MBX);
 
     Hwi_Params_init(&hwiAttrs);
 
@@ -180,6 +176,12 @@ Void InterruptDsp_intSend(UInt16 remoteProcId, UArg arg)
     }
     else if (remoteProcId == MultiProc_getId("CORE1")) {
         REG32(MAILBOX_MESSAGE(APPM3_MBX)) = arg;
+    }
+    else if (remoteProcId == MultiProc_getId("HOST")) {
+        REG32(MAILBOX_MESSAGE(HOST_MBX)) = arg;
+    }
+    else if (remoteProcId == MultiProc_getId("DSP")) {
+        REG32(MAILBOX_MESSAGE(DSP_MBX)) = arg;
     }
 }
 

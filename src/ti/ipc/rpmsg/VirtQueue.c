@@ -79,7 +79,7 @@
 #define REG32(A)   (*(volatile UInt32 *) (A))
 
 /* Used for defining the size of the virtqueue registry */
-#define NUM_QUEUES                      5
+#define NUM_QUEUES                      7
 
 /* Predefined device addresses */
 #define IPU_MEM_VRING0          0xA0000000
@@ -158,6 +158,8 @@ enum {
 #define ID_A9_TO_SYSM3      1
 #define ID_APPM3_TO_A9      2
 #define ID_A9_TO_APPM3      3
+#define ID_DSP_TO_A9        4
+#define ID_A9_TO_DSP        5
 
 typedef struct VirtQueue_Object {
     /* Id for this VirtQueue_Object */
@@ -367,7 +369,7 @@ Void VirtQueue_isr(UArg msg)
 
     Log_print1(Diags_USER1, "VirtQueue_isr received msg = 0x%x\n", msg);
 
-    if (MultiProc_self() == sysm3ProcId) {
+    if (MultiProc_self() == sysm3ProcId || MultiProc_self() == dspProcId) {
         switch(msg) {
             case (UInt)RP_MSG_MBOX_READY:
                 return;
@@ -396,7 +398,7 @@ Void VirtQueue_isr(UArg msg)
                 }
             case (UInt)RP_MSG_HIBERNATION_FORCE:
                 /* Notify Core1 */
-                if (isRunningCpu1()) {
+                if (MultiProc_self() == sysm3ProcId && isRunningCpu1()) {
                     InterruptProxy_intSend(appm3ProcId,
                                         (UInt)(RP_MSG_HIBERNATION));
                 }
@@ -460,9 +462,11 @@ VirtQueue_Object *VirtQueue_create(VirtQueue_callback callback,
 
     switch (vq->id) {
         case ID_SYSM3_TO_A9:
+        case ID_DSP_TO_A9:
             vring_phys = (struct vring *) IPU_MEM_VRING0;
             break;
         case ID_A9_TO_SYSM3:
+        case ID_A9_TO_DSP:
             vring_phys = (struct vring *) IPU_MEM_VRING1;
             break;
         case ID_APPM3_TO_A9:
@@ -480,10 +484,10 @@ VirtQueue_Object *VirtQueue_create(VirtQueue_callback callback,
     vring_init(&(vq->vring), RP_MSG_NUM_BUFS, vring_phys, RP_MSG_VRING_ALIGN);
 
     /*
-     *  Don't trigger a mailbox message every time A8 makes another buffer
+     *  Don't trigger a mailbox message every time MPU makes another buffer
      *  available
      */
-    if (vq->procId == hostProcId || vq->procId == dspProcId) {
+    if (vq->procId == hostProcId) {
         vq->vring.used->flags |= VRING_USED_F_NO_NOTIFY;
     }
 
@@ -504,17 +508,12 @@ Void VirtQueue_startup()
 
     /* Initilize the IpcPower module */
     IpcPower_init();
-
-    /*
-     *  DSP can be used to prototype communications with CORE0 instead of
-     *  HOST
-     */
-    if (MultiProc_self() == dspProcId) {
-    }
-    else if (MultiProc_self() == sysm3ProcId)
+    if (MultiProc_self() == sysm3ProcId || MultiProc_self() == dspProcId) {
         InterruptProxy_intRegister(VirtQueue_isr);
+    }
     else if (MultiProc_self() == appm3ProcId)
         InterruptProxy_intRegister(VirtQueue_isr);
+
 }
 
 /*!
