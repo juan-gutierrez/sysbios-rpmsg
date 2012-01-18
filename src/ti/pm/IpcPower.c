@@ -100,6 +100,9 @@ Void IpcPower_init()
 {
     sysm3ProcId     = MultiProc_getId("CORE0");
     appm3ProcId     = MultiProc_getId("CORE1");
+#if CORE1
+    PowerSuspArgs.rendezvousResume = TRUE;
+#endif
 
     if (curInit++) {
         return;
@@ -110,7 +113,6 @@ Void IpcPower_init()
     suspendResumeSwi = Swi_create(IpcPower_suspendSwi, &swiParams, NULL);
 
     /*Power settings for saving/restoring context */
-    PowerSuspArgs.rendezvousResume = TRUE;
     PowerSuspArgs.dmaChannel = CPU_COPY;
     PowerSuspArgs.intMask31_0 = 0x0;
     PowerSuspArgs.intMask63_32 = 0x0;
