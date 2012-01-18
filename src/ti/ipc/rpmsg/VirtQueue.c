@@ -126,7 +126,10 @@ enum {
     RP_MBOX_ECHO_REPLY          = (Int)0xFFFFFF04,
     RP_MBOX_ABORT_REQUEST       = (Int)0xFFFFFF05,
     RP_MSG_FLUSH_CACHE          = (Int)0xFFFFFF06,
-    RP_MSG_HIBERNATION          = (Int)0xFFFFFF07
+    RP_MSG_HIBERNATION          = (Int)0xFFFFFF10,
+    RP_MSG_HIBERNATION_FORCE    = (Int)0xFFFFFF11,
+    RP_MSG_HIBERNATION_ACK      = (Int)0xFFFFFF12,
+    RP_MSG_HIBERNATION_CANCEL   = (Int)0xFFFFFF13
 };
 
 #define DIV_ROUND_UP(n,d)   (((n) + (d) - 1) / (d))
@@ -336,6 +339,16 @@ Bool VirtQueue_enableCallback(VirtQueue_Object *vq)
 }
 
 /*!
+ * ======== VirtQueue_maySuspend ========
+ */
+Bool VirtQueue_maySuspend()
+{
+    VirtQueue_Object *vq = queueRegistry[ID_A9_TO_SYSM3];
+
+    return vq->last_avail_idx == vq->vring.avail->idx;
+}
+
+/*!
  * ======== VirtQueue_isr ========
  * Note 'arg' is ignored: it is the Hwi argument, not the mailbox argument.
  */
@@ -367,8 +380,16 @@ Void VirtQueue_isr(UArg msg)
                 return;
 
             case (UInt)RP_MSG_HIBERNATION:
+                if (!VirtQueue_maySuspend()) {
+                       InterruptM3_intSend(hostProcId,
+                                           (UInt)RP_MSG_HIBERNATION_CANCEL);
+                       return;
+                }
+            case (UInt)RP_MSG_HIBERNATION_FORCE:
                 /* Notify Core1 */
                 InterruptM3_intSend(appm3ProcId, (UInt)(RP_MSG_HIBERNATION));
+                /* Ack request */
+                InterruptM3_intSend(hostProcId, (UInt)RP_MSG_HIBERNATION_ACK);
                 IpcPower_suspend();
                 return;
 
