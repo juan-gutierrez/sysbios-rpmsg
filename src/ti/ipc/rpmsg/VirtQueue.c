@@ -76,6 +76,8 @@
 
 #include "virtio_ring.h"
 
+#define REG32(A)   (*(volatile UInt32 *) (A))
+
 /* Used for defining the size of the virtqueue registry */
 #define NUM_QUEUES                      5
 
@@ -196,6 +198,13 @@ static inline Void * mapPAtoVA(UInt pa)
 static inline UInt mapVAtoPA(Void * va)
 {
     return ((UInt)va & 0x000fffffU) | 0xa9000000U;
+}
+
+#define RM_MPU_M3_RSTCTRL 0xAA306910 
+
+static Bool isRunningCpu1()
+{
+    return !(REG32(RM_MPU_M3_RSTCTRL) & 2);
 }
 
 /*!
@@ -387,7 +396,10 @@ Void VirtQueue_isr(UArg msg)
                 }
             case (UInt)RP_MSG_HIBERNATION_FORCE:
                 /* Notify Core1 */
-                InterruptM3_intSend(appm3ProcId, (UInt)(RP_MSG_HIBERNATION));
+                if (isRunningCpu1()) {
+                    InterruptM3_intSend(appm3ProcId,
+                                        (UInt)(RP_MSG_HIBERNATION));
+                }
                 /* Ack request */
                 InterruptM3_intSend(hostProcId, (UInt)RP_MSG_HIBERNATION_ACK);
                 IpcPower_suspend();
