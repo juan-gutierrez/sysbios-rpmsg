@@ -31,11 +31,11 @@
 #
 
 # Repo
-REPO		= /usr/local
+REPO		= /data/omapts/linux/dsp-tc
 
 # Edit Dependency Versions:
-XDCROOTVER	= xdctools_3_22_01_21
-BIOSPRODVER	= bios_6_32_01_38
+XDCROOTVER	= xdctools_3_23_01_43
+BIOSPRODVER	= smpbios_1_00_00_16_eng
 IPCPRODVER	= ipc_1_23_01_26
 
 BIOSPROD	= $(REPO)/$(BIOSPRODVER)
@@ -48,7 +48,7 @@ export XDCPATH	= $(BIOSPROD)/packages;$(IPCPROD)/packages;./src;
 
 all:
 	$(XDCROOT)/xdc -j $(j) -Pr src
-
+	
 clean:
 	$(XDCROOT)/xdc clean -Pr src
 
