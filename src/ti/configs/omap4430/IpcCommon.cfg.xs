@@ -56,12 +56,6 @@ xdc.loadPackage('ti.pm');
 var Power = xdc.useModule('ti.sysbios.family.arm.ducati.omap4430.Power');
 Power.loadSegment = "PM_DATA";
 
-/* Idle function that periodically flushes the unicache */
-var Idle = xdc.useModule('ti.sysbios.knl.Idle');
-Idle.addFunc('&VirtQueue_cacheWb');
-/* IpcPower idle function must be at the end */
-Idle.addFunc('&IpcPower_idle');
-
 var HeapBuf   = xdc.useModule('ti.sysbios.heaps.HeapBuf');
 var List      = xdc.useModule('ti.sdo.utils.List');
 
