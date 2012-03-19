@@ -190,7 +190,9 @@ static struct VirtQueue_Object *queueRegistry[NUM_QUEUES];
 static UInt16 hostProcId;
 static UInt16 dspProcId;
 static UInt16 sysm3ProcId;
+#ifndef SMP
 static UInt16 appm3ProcId;
+#endif
 
 static inline Void * mapPAtoVA(UInt pa)
 {
@@ -351,8 +353,9 @@ Void VirtQueue_isr(UArg msg)
     VirtQueue_Object *vq;
 
     Log_print1(Diags_USER1, "VirtQueue_isr received msg = 0x%x\n", msg);
-
+#ifndef SMP
     if (MultiProc_self() == sysm3ProcId) {
+#endif
         switch(msg) {
             case (UInt)RP_MSG_MBOX_READY:
                 return;
@@ -374,8 +377,10 @@ Void VirtQueue_isr(UArg msg)
                 return;
 
             case (UInt)RP_MSG_HIBERNATION:
+ #ifndef SMP
                 /* Notify Core1 */
                 InterruptProxy_intSend(appm3ProcId, (UInt)(RP_MSG_HIBERNATION));
+#endif
                 IpcPower_suspend();
                 return;
 
@@ -386,6 +391,7 @@ Void VirtQueue_isr(UArg msg)
                  */
                 break;
         }
+#ifndef SMP
     }
     else if (msg & 0xFFFF0000) {
         if (msg == (UInt)RP_MSG_HIBERNATION) {
@@ -398,11 +404,14 @@ Void VirtQueue_isr(UArg msg)
         InterruptProxy_intSend(appm3ProcId, (UInt)msg);
     }
     else {
+#endif
         vq = queueRegistry[msg];
         if (vq) {
             vq->callback(vq);
         }
+#ifndef SMP
     }
+#endif
 }
 
 
@@ -427,12 +436,13 @@ VirtQueue_Object *VirtQueue_create(VirtQueue_callback callback,
     vq->id = vqid;
     vq->procId = remoteProcId;
     vq->last_avail_idx = 0;
-
+#ifndef SMP
     if (MultiProc_self() == appm3ProcId) {
         /* vqindices that belong to AppM3 should be big so they don't
 	 * collide with SysM3's virtqueues */
         vq->id += 200;
     }
+#endif
 
     switch (vq->id) {
 	/* sysm3 rpmsg vrings */
@@ -450,7 +460,7 @@ VirtQueue_Object *VirtQueue_create(VirtQueue_callback callback,
         case CONSOLE_A9_TO_SYSM3:
             vring_phys = (struct vring *) CONSOLE_VRING1_PA;
             break;
-
+#ifndef SMP
 	/* appm3 rpmsg vrings */
         case ID_APPM3_TO_A9:
             vring_phys = (struct vring *) IPU_MEM_VRING2;
@@ -458,6 +468,7 @@ VirtQueue_Object *VirtQueue_create(VirtQueue_callback callback,
         case ID_A9_TO_APPM3:
             vring_phys = (struct vring *) IPU_MEM_VRING3;
             break;
+#endif
     }
 
     Log_print3(Diags_USER1,
@@ -479,8 +490,9 @@ Void VirtQueue_startup()
     hostProcId      = MultiProc_getId("HOST");
     dspProcId       = MultiProc_getId("DSP");
     sysm3ProcId     = MultiProc_getId("CORE0");
+#ifndef SMP
     appm3ProcId     = MultiProc_getId("CORE1");
-
+#endif
     /* Initilize the IpcPower module */
     IpcPower_init();
 
@@ -492,8 +504,10 @@ Void VirtQueue_startup()
     }
     else if (MultiProc_self() == sysm3ProcId)
         InterruptProxy_intRegister(VirtQueue_isr);
+#ifndef SMP
     else if (MultiProc_self() == appm3ProcId)
         InterruptProxy_intRegister(VirtQueue_isr);
+#endif
 }
 
 /*!
