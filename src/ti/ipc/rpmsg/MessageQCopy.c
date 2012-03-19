@@ -50,7 +50,9 @@
 #include <xdc/runtime/Registry.h>
 #include <xdc/runtime/Log.h>
 #include <xdc/runtime/Diags.h>
-
+#ifdef SMP
+#include <ti/sysbios/hal/Hwi.h>
+#endif
 #include <ti/sysbios/knl/Swi.h>
 #include <ti/sysbios/knl/Semaphore.h>
 #include <ti/sysbios/heaps/HeapBuf.h>
@@ -131,8 +133,11 @@ static MessageQCopy_Transport   transport;
 static UInt8 recv_buffers[MAXHEAPSIZE];
 
 /* Module ref count: */
+#ifdef SMP
+static volatile Int curInit = 0;
+#else
 static Int curInit = 0;
-
+#endif
 /*
  *  ======== MessageQCopy_swiFxn ========
  */
@@ -208,14 +213,27 @@ Void MessageQCopy_init(UInt16 remoteProcId)
     HeapBuf_Params prms;
     int     i;
     Registry_Result result;
-
+#ifdef SMP
+    UInt        key;
+#endif
     Log_print1(Diags_ENTRY, "--> "FXNN": (remoteProcId=%d)",
                 (IArg)remoteProcId);
-
+#ifdef SMP
+    key = Hwi_disable();
+    if (curInit == 0) {
+        curInit = 1;
+        Hwi_restore(key);
+    }
+    else {
+        Hwi_restore(key);
+        while (curInit != 2);
+        return;
+    }
+#else
     if (curInit++ != 0) {
         return; /* module already initialized */
     }
-
+#endif
     /* register with xdc.runtime to get a diags mask */
     result = Registry_addModule(&Registry_CURDESC, MODULE_NAME);
     Assert_isTrue(result == Registry_SUCCESS, (Assert_Id)NULL);
@@ -255,7 +273,9 @@ Void MessageQCopy_init(UInt16 remoteProcId)
 
     /* construct the Swi to process incoming messages: */
     transport.swiHandle = Swi_create(MessageQCopy_swiFxn, NULL, NULL);
-
+#ifdef SMP
+    curInit = 2;
+#endif
     Log_print0(Diags_EXIT, "<-- "FXNN);
 }
 #undef FXNN
