@@ -29,35 +29,47 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+/*
+ *  ======== package.xs ========
+ *
+ */
 
- /* Idle function that periodically flushes the unicache */
-var Idle = xdc.useModule('ti.sysbios.knl.Idle');
-Idle.addFunc('&VirtQueue_cacheWb');
-/* IpcPower idle function must be at the end */
-Idle.addFunc('&IpcPower_idle');
-
-/* -------------------------------- CORE1 ----------------------------------*/
-var MultiProc = xdc.useModule('ti.sdo.utils.MultiProc');
-MultiProc.setConfig("CORE1", ["HOST", "CORE0", "CORE1", "DSP"]);
-
-/* Required to run BIOS on AppM3 (core 1) */
-var Core = xdc.useModule('ti.sysbios.family.arm.ducati.Core');
-Core.id = 1;
 
 /*
- * These lines coerce BIOS into creating a unique interrupt vector table for
- * each core. Core 0's interrupt vector table is placed at 0x400, Core 1's
- * is placed at 0x800.
- *
- * Additionally, because both sections (.vecs AND .resetVecs) are placed at
- * the same address, BIOS will NOT generate a vector table that gets placed
- * at location 0.
- *
- * A common vector table that gets placed at address 0 is being inserted into
- * the load image by the script that combines the two M3 programs into a
- * single load image.
+ *  ======== getLibs ========
  */
-Program.sectMap[".resetVecs"].loadAddress = (Core.id + 1) * 0x400;
-Program.sectMap[".vecs"].loadAddress      = (Core.id + 1) * 0x400;
+function getLibs(prog)
+{
+    var suffix;
+    var file;
+    var libAry = [];
+    var profile = this.profile;
 
-Program.sectMap[".tracebuf"] = "EXT_DATA";
+    suffix = prog.build.target.findSuffix(this);
+    if (suffix == null) {
+        return "";  // nothing to contribute
+    }
+
+    // make sure the library exists, else fallback to a built library
+    file = "lib/" + profile + "/SysMin" + ".a" + suffix;
+    if (java.io.File(this.packageBase + file).exists()) {
+        libAry.push(file);
+    }
+    else {
+        file = "lib/release/SysMin" + ".a" + suffix;
+        if (java.io.File(this.packageBase + file).exists()) {
+            libAry.push(file);
+        }
+        else {
+            // fallback to a compatible library built by this package
+            for (var p in this.build.libDesc) {
+                if (suffix == this.build.libDesc[p].suffix) {
+                    libAry.push(p);
+                    break;
+                }
+            }
+        }
+    }
+
+    return libAry.join(";");
+}

@@ -28,36 +28,15 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
-
- /* Idle function that periodically flushes the unicache */
-var Idle = xdc.useModule('ti.sysbios.knl.Idle');
-Idle.addFunc('&VirtQueue_cacheWb');
-/* IpcPower idle function must be at the end */
-Idle.addFunc('&IpcPower_idle');
-
-/* -------------------------------- CORE1 ----------------------------------*/
-var MultiProc = xdc.useModule('ti.sdo.utils.MultiProc');
-MultiProc.setConfig("CORE1", ["HOST", "CORE0", "CORE1", "DSP"]);
-
-/* Required to run BIOS on AppM3 (core 1) */
-var Core = xdc.useModule('ti.sysbios.family.arm.ducati.Core');
-Core.id = 1;
 
 /*
- * These lines coerce BIOS into creating a unique interrupt vector table for
- * each core. Core 0's interrupt vector table is placed at 0x400, Core 1's
- * is placed at 0x800.
+ *  ======== package.xdc ========
  *
- * Additionally, because both sections (.vecs AND .resetVecs) are placed at
- * the same address, BIOS will NOT generate a vector table that gets placed
- * at location 0.
- *
- * A common vector table that gets placed at address 0 is being inserted into
- * the load image by the script that combines the two M3 programs into a
- * single load image.
  */
-Program.sectMap[".resetVecs"].loadAddress = (Core.id + 1) * 0x400;
-Program.sectMap[".vecs"].loadAddress      = (Core.id + 1) * 0x400;
 
-Program.sectMap[".tracebuf"] = "EXT_DATA";
+package ti.trace [0,0,0,0] {
+    module SysMin;
+    module StackDbg;
+};

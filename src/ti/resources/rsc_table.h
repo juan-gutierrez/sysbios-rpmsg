@@ -232,8 +232,8 @@ struct resource_table {
 	struct fw_rsc_devmem devmem7;
 };
 
-extern char * xdc_runtime_SysMin_Module_State_0_outbuf__A;
-#define TRACEBUFADDR (u32)&xdc_runtime_SysMin_Module_State_0_outbuf__A
+extern char * ti_trace_SysMin_Module_State_0_outbuf__A;
+#define TRACEBUFADDR (u32)&ti_trace_SysMin_Module_State_0_outbuf__A
 
 #pragma DATA_SECTION(resources, ".resource_table")
 #pragma DATA_ALIGN(resources, 4096)
