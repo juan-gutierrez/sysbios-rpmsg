@@ -103,6 +103,9 @@ Void ServiceMgr_init()
     Task_Params_init(&params);
     params.instance->name = "ServiceMgr";
     params.priority = 1;   /* Lowest priority thread */
+#ifdef SMP
+   params.affinity = 0;
+#endif
     Task_create(serviceMgrTaskFxn, &params, NULL);
 }
 
