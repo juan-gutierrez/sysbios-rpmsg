@@ -47,7 +47,7 @@ export XDCROOT	= $(XDCDIST_TREE)
 export XDCPATH	= $(BIOSPROD)/packages;$(IPCPROD)/packages;./src;
 
 all:
-	$(XDCROOT)/xdc -j $(j) -Pr src
+	$(XDCROOT)/xdc -k -j $(j) -P `$(XDCROOT)/bin/xdcpkg src/ti |  egrep -v -e "/tests|/apps" | xargs`
 	
 clean:
 	$(XDCROOT)/xdc clean -Pr src
