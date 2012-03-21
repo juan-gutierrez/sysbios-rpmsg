@@ -31,16 +31,21 @@
 #
 
 # Repo
-REPO		= /usr/local
+BIOSTOOLSROOT   ?= /usr/local
+REPO            := $(BIOSTOOLSROOT)
 
-# Edit Dependency Versions:
-XDCROOTVER	= xdctools_3_22_01_21
-BIOSPRODVER	= bios_6_32_01_38
-IPCPRODVER	= ipc_1_23_01_26
+# Customizable version variables - export them or pass as arguments to make
+XDCVERSION	    ?= xdctools_3_22_03_41
+BIOSVERSION	    ?= bios_6_32_01_38
+IPCVERSION	    ?= ipc_1_23_01_26
 
-BIOSPROD	= $(REPO)/$(BIOSPRODVER)
-IPCPROD		= $(REPO)/$(IPCPRODVER)
-XDCDIST_TREE	= $(REPO)/$(XDCROOTVER)
+ifeq (bldcfg.mk,$(wildcard bldcfg.mk))
+include bldcfg.mk
+endif
+
+BIOSPROD	= $(REPO)/$(BIOSVERSION)
+IPCPROD		= $(REPO)/$(IPCVERSION)
+XDCDIST_TREE	= $(REPO)/$(XDCVERSION)
 
 export XDCROOT	= $(XDCDIST_TREE)
 
@@ -48,9 +53,21 @@ export XDCPATH	= $(BIOSPROD)/packages;$(IPCPROD)/packages;./src;
 
 all:
 	$(XDCROOT)/xdc -j $(j) -Pr src
-
+	
 clean:
 	$(XDCROOT)/xdc clean -Pr src
+
+smp_config:
+	@echo export XDCVERSION=xdctools_3_23_01_43 > bldcfg.mk
+	@echo export BIOSVERSION=smpbios_1_00_00_16_eng >> bldcfg.mk
+	@echo export SMP=1 >> bldcfg.mk
+	@touch src/config.bld
+
+unconfig:
+ifeq (bldcfg.mk,$(wildcard bldcfg.mk))
+	@rm bldcfg.mk
+endif
+	@touch src/config.bld
 
 .PHONY: tags
 tags:

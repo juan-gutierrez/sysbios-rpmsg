@@ -37,11 +37,12 @@
 /* Exported tools locations to supercede defaults */
 var arm_cgtools_rootdir = java.lang.System.getenv("TMS470CGTOOLPATH");
 var c6x_cgtools_rootdir = java.lang.System.getenv("C6000CGTOOLPATH");
-
+var smp_enable = java.lang.System.getenv("SMP");
 //print("arm_cgtools_rootdir = " + arm_cgtools_rootdir);
 //print("c6x_cgtools_rootdir = " + c6x_cgtools_rootdir);
+print("smp_enable = " + smp_enable);
 
-if (c6x_cgtools_rootdir != null) {
+if (c6x_cgtools_rootdir != null && smp_enable == null) {
     /* Setup for C64T target */
     var C64T = xdc.useModule('ti.targets.elf.C64T');
     C64T.rootDir = c6x_cgtools_rootdir;
@@ -60,15 +61,21 @@ if (arm_cgtools_rootdir != null) {
     M3.ccOpts.suffix += " --embed_inline_assembly -ms -pds=71";
     M3.lnkOpts.prefix += " --retain=.resource_table";
     /* Set default platform and list of all interested platforms for M3 */
-    M3.platforms = [
-        "ti.platform.omap4430.core0",
-        "ti.platform.omap4430.core1"
-    ];
-    M3.platform = M3.platforms[0];
-
+    if (smp_enable == null) {
+        M3.platforms = [
+            "ti.platform.omap4430.core0",
+            "ti.platform.omap4430.core1"
+        ];
+        M3.platform = M3.platforms[0];
+    }
+    else {
+        M3.platforms = [
+            "ti.platform.omap4430.ipu",
+        ];
+        M3.platform = M3.platforms[0]; 
+    }
     Build.targets.$add(M3);
 }
-
 /* Eliminating profiles that aren't debug or release */
 for (var t = 0; t < Build.targets.length; t++) {
 //    print("Inspecting target " + Build.targets[t]);
