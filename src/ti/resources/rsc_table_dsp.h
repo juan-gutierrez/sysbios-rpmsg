@@ -42,6 +42,8 @@
 #ifndef _RSC_TABLE_DSP_H_
 #define _RSC_TABLE_DSP_H_
 
+#include <ti/resources/rsc_types.h>
+
 /* Ducati Memory Map: */
 #define L4_44XX_BASE            0x4a000000
 
@@ -113,170 +115,9 @@
 
 #  define TEXT_SIZE  (SZ_512K)
 
-/* virtio ids: keep in sync with the linux "include/linux/virtio_ids.h" */
-#define VIRTIO_ID_CONSOLE	3 /* virtio console */
-#define VIRTIO_ID_RPMSG		7 /* virtio remote processor messaging */
-
-/* Indices of rpmsg virtio features we support */
-#define VIRTIO_RPMSG_F_NS	0 /* RP supports name service notifications */
-#define VIRTIO_RING_F_SYMMETRIC	30 /* We support symmetric vring */
-
 /* flip up bits whose indices represent features we support */
 #define RPMSG_DSP_C0_FEATURES         1
 #define TESLA2DUCATI_RPMSG_FEATURES (1 << VIRTIO_RPMSG_F_NS || 1 << VIRTIO_RING_F_SYMMETRIC)
-
-/* Resource info: Must match include/linux/remoteproc.h: */
-#define TYPE_CARVEOUT    0
-#define TYPE_DEVMEM      1
-#define TYPE_TRACE       2
-#define TYPE_VDEV  3
-#define TYPE_EVDEV  4
-
-struct fw_rsc_carveout {
-	u32 type;
-	u32 da;
-	u32 pa;
-	u32 len;
-	u32 flags;
-	u32 reserved;
-	char name[32];
-};
-
-struct fw_rsc_devmem {
-	u32 type;
-	u32 da;
-	u32 pa;
-	u32 len;
-	u32 flags;
-	u32 reserved;
-	char name[32];
-};
-
-struct fw_rsc_trace {
-	u32 type;
-	u32 da;
-	u32 len;
-	u32 reserved;
-	char name[32];
-};
-
-struct fw_rsc_vdev_vring {
-	u32 da; /* device address */
-	u32 align;
-	u32 num;
-	u32 notifyid;
-	u32 reserved;
-};
-
-struct fw_rsc_vdev {
-	u32 type;
-	u32 id;
-	u32 notifyid;
-	u32 dfeatures;
-	u32 gfeatures;
-	u32 config_len;
-	char status;
-	char num_of_vrings;
-	char reserved[2];
-};
-
-/*
- * This is an extended vdev, which also indicates the
- * id of the processors that will be communicating via
- * this vdev.
- *
- * This target processor id is indicated by the new
- * target_id field.
- */
-struct fw_rsc_evdev {
-	u32 type;
-	u32 id;
-	u32 proc_id1;
-	u32 proc_id2;
-	u32 notify_id;
-	u32 features1;
-	u32 features2;
-	u32 config_len;
-	u32 reserved;
-	char status1;
-	char status2;
-	char num_of_vrings;
-	char padding;
-};
-
-/*
- * this is an extended vring structure.
- *
- * it contains the device address of both subsystems,
- * so communication can take place.
- */
-#define EVDEV_MASTER_ALLOCATES_VRING 1
-struct fw_rsc_evdev_vring {
-	u32 da1; /* device address of subsystem1*/
-	u32 pa; /* physical address */
-	u32 da2; /* device address of subsystem2*/
-	u32 align;
-	u32 num;
-	u32 notify_id;
-	u32 flags;
-	u32 reserved;
-};
-
-struct resource_table {
-	u32 version;
-	u32 num;
-	u32 reserved[2];
-	u32 offset[13];
-
-	/* rpmsg vdev entry */
-	struct fw_rsc_vdev rpmsg_vdev;
-	struct fw_rsc_vdev_vring rpmsg_vring0;
-	struct fw_rsc_vdev_vring rpmsg_vring1;
-
-	/* console vdev entry */
-	struct fw_rsc_vdev console_vdev;
-	struct fw_rsc_vdev_vring console_vring0;
-	struct fw_rsc_vdev_vring console_vring1;
-
-	/*
-	 * rpmsg evdev entry for ducati-tesla communication.
-	 *
-	 * this is going to be a symmetric vring vdev.
-	 */
-	struct fw_rsc_evdev rpmsg_tesla2ducati_vdev;
-	struct fw_rsc_evdev_vring rpmsg_tesla2ducati_tx_vring;
-	struct fw_rsc_evdev_vring rpmsg_tesla2ducati_rx_vring;
-
-	/* data carveout entry */
-	struct fw_rsc_carveout data_cout;
-
-	/* heap carveout entry */
-	struct fw_rsc_carveout heap_cout;
-
-	/* text carveout entry */
-	struct fw_rsc_carveout text_cout;
-
-	/* trace entry */
-	struct fw_rsc_trace trace;
-
-	/* devmem entry */
-	struct fw_rsc_devmem devmem0;
-
-	/* devmem entry */
-	struct fw_rsc_devmem devmem1;
-
-	/* devmem entry */
-	struct fw_rsc_devmem devmem2;
-
-	/* devmem entry */
-	struct fw_rsc_devmem devmem3;
-
-	/* devmem entry */
-	struct fw_rsc_devmem devmem4;
-
-	/* devmem entry */
-	struct fw_rsc_devmem devmem5;
-};
 
 extern char * xdc_runtime_SysMin_Module_State_0_outbuf__A;
 #define TRACEBUFADDR (u32)&xdc_runtime_SysMin_Module_State_0_outbuf__A
@@ -292,7 +133,7 @@ struct resource_table resources = {
 	{
 		offsetof(struct resource_table, rpmsg_vdev),
 		offsetof(struct resource_table, console_vdev),
-		offsetof(struct resource_table, rpmsg_tesla2ducati_vdev),
+		offsetof(struct resource_table, rpmsg_tesla_vdev),
 		offsetof(struct resource_table, data_cout),
 		offsetof(struct resource_table, heap_cout),
 		offsetof(struct resource_table, text_cout),
