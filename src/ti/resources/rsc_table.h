@@ -128,8 +128,8 @@
 #define RPMSG_IPU_C0_FEATURES         1
 #define DUCATI_TO_TESLA_RPMSG_FEATURES (1 << VIRTIO_RPMSG_F_NS || 1 << VIRTIO_RING_F_SYMMETRIC)
 
-extern char * xdc_runtime_SysMin_Module_State_0_outbuf__A;
-#define TRACEBUFADDR (u32)&xdc_runtime_SysMin_Module_State_0_outbuf__A
+//extern char * xdc_runtime_SysMin_Module_State_0_outbuf__A;
+#define TRACEBUFADDR (UInt32)&xdc_runtime_SysMin_Module_State_0_outbuf__A
 
 #pragma DATA_SECTION(resources, ".resource_table")
 #pragma DATA_ALIGN(resources, 4096)

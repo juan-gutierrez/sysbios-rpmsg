@@ -45,3 +45,6 @@ wrints
 *.tar
 *.zip
 *patch*
+
+# Generated header files from XDC modules
+IpcMemory.h
