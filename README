@@ -78,22 +78,44 @@ BUILD (Linux Environment)
            export TMS470CGTOOLPATH=/data/omapts/linux/dsp-tc/cgtarm-4.9.0
            export C6000CGTOOLPATH=/data/omapts/linux/dsp-tc/cgt6x-7.2.0
 
-    2) Edit Makefile to point the REPO variable to the correct local installation
-       path (if different from the default installation path). All the above
-       tools are expected to be installed in the same path.
+    2) Export the proper environment variable to point to your installation path
+       for all the BIOS-side tools (optional, MUST set if your installation path
+       is different from the default install location - /usr/local). All the
+       above tools are expected to be installed in the same path. Note that the
+       path should not end with a trailing '/'.
        Eg:
-          REPO          = /data/omapts/linux/dsp-tc
+           export BIOSTOOLSROOT=/data/omapts/linux/dsp-tc
 
-    3) Edit Makefile so that the following variables are pointing to the correct
-       tools versions
-       - BIOSPRODVER
-       - IPCPRODVER
-       - XDCROOTVER
+    3) Export the proper environment variable to choose your own version of XDC
+       tools (optional, need to set only if different from default is desired)
+       Eg:
+           export XDCVERSION=xdctools_3_22_03_41
 
-    4) From the top-level sysbios-rpmsg directory, type in 'make' to build the
+    4) Export the proper environment variable(s) to choose your own versions of
+       BIOS and/or IPC tools (optional, need to set only if different from
+       default is desired)
+       Eg:
+           export BIOSVERSION=bios_6_32_01_38
+                     - and/or -
+           export IPCVERSION=ipc_1_23_01_26
+
+    5) From the top-level sysbios-rpmsg directory, type in 'make' to build the
        entire tree plus sample applications
 
-    5) A default firmware binary, ducati-m3.bin is generated in the src/utils
+    6) Steps 1 to 4 can also be achieved alternatively by defining any of the
+       variables on the make invocation line within the shell.
+       Eg:
+        1. make TMS470CGTOOLPATH=/data/omapts/linux/dsp-tc/cgtarm-4.9.0
+             (define custom installation path for TMS470CGTOOLPATH)
+        2. make BIOSTOOLSROOT=/data/omapts/linux/dsp-tc XDCVERSION=xdctools_3_22_01_21
+             (define custom BIOSTOOLSROOT location and XDC version)
+        3. make XDCVERSION=xdctools_3_22_03_41 BIOSVERSION=bios_6_32_01_38
+             (define custom XDC and BIOS versions)
+
+    7) Type 'make tools' or 'make info' to get your current tools location and
+       versions.
+
+    8) A default firmware binary, ducati-m3.bin is generated in the src/utils
        directory, using two of the sample baseimages in sysbios-rpmsg tree.
 
 CLEAN (Linux Environment)

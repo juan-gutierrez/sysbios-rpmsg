@@ -31,16 +31,17 @@
 #
 
 # Repo
-REPO		= /usr/local
+BIOSTOOLSROOT   ?= /usr/local
+REPO            := $(BIOSTOOLSROOT)
 
-# Edit Dependency Versions:
-XDCROOTVER	= xdctools_3_22_03_41
-BIOSPRODVER	= bios_6_32_01_38
-IPCPRODVER	= ipc_1_23_01_26
+# Customizable version variables - export them or pass as arguments to make
+XDCVERSION      ?= xdctools_3_22_03_41
+BIOSVERSION     ?= bios_6_32_01_38
+IPCVERSION      ?= ipc_1_23_01_26
 
-BIOSPROD	= $(REPO)/$(BIOSPRODVER)
-IPCPROD		= $(REPO)/$(IPCPRODVER)
-XDCDIST_TREE	= $(REPO)/$(XDCROOTVER)
+BIOSPROD	= $(REPO)/$(BIOSVERSION)
+IPCPROD		= $(REPO)/$(IPCVERSION)
+XDCDIST_TREE	= $(REPO)/$(XDCVERSION)
 
 export XDCROOT	= $(XDCDIST_TREE)
 
@@ -56,3 +57,12 @@ clean:
 tags:
 	ctags -R src/
 	cscope -R -b -ssrc/
+
+info: tools
+tools:
+	@echo "REPO   := $(REPO)"
+	@echo "XDC    := $(XDCDIST_TREE)"
+	@echo "BIOS   := $(BIOSPROD)"
+	@echo "IPC    := $(IPCPROD)"
+	@echo "ARMCGT := $(TMS470CGTOOLPATH)"
+	@echo "C6xCGT := $(C6000CGTOOLPATH)"
