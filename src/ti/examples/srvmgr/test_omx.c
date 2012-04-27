@@ -60,20 +60,6 @@
 #include <ti/srvmgr/rpmsg_omx.h>
 #include <ti/srvmgr/omx_packet.h>
 
-/*
- * Only compile the resource table in for Core0 build (so we don't build
- * twice for ducati-m3.bin!)
- */
-#if CORE0
-//#include <ti/resources.mmap/rsc_table.h>
-#include <ti/resources/rsc_table.h>
-#endif
-
-/* Dsp has its own resource table */
-#if DSP
-#include <ti/resources/rsc_table_dsp.h>
-#endif
-
 /* Turn on/off printf's */
 #define CHATTER 0
 
@@ -230,11 +216,6 @@ Int main(Int argc, char* argv[])
 
     System_printf("%s starting..\n", MultiProc_getName(MultiProc_self()));
     printf("%s starting..\n", MultiProc_getName(MultiProc_self()));
-
-#if (CORE0 || DSP)
-    System_printf("%d resources at 0x%x\n", resources.num, resources);
-    printf("%d resources at 0x%x\n", resources.num, resources);
-#endif
 
     /* Plug vring interrupts, and spin until host handshake complete. */
     VirtQueue_startup();
