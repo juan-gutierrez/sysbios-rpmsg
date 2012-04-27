@@ -51,6 +51,9 @@ xdc.loadPackage('ti.ipc.rpmsg');
 xdc.loadPackage('ti.srvmgr');
 xdc.loadPackage('ti.resmgr');
 
+/* Enable Memory Translation module that operates on the BIOS Resource Table */
+var IpcMemory = xdc.useModule('ti.resources.IpcMemory');
+
 /* Modules used in Power Management */
 xdc.loadPackage('ti.pm');
 var Power = xdc.useModule('ti.sysbios.family.arm.ducati.omap4430.Power');
