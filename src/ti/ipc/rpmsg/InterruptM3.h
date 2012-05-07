@@ -31,7 +31,7 @@
  */
 /*
  *  ======== InterruptM3.h ========
- *  OMAP4430/Ducati Interrupt Manger
+ *  OMAP4430/Ducati Interrupt Manager
  */
 
 #include <ti/sysbios/hal/Hwi.h>
@@ -42,17 +42,17 @@
  *  ======== InterruptM3_intEnable ========
  *  Enable remote processor interrupt
  */
-Void InterruptM3_intEnable();
+Void InterruptM3_intEnable(UInt16 remoteProcId);
 
 /*!
  *  ======== InterruptM3_intDisable ========
  */
-Void InterruptM3_intDisable();
+Void InterruptM3_intDisable(UInt16 remoteProcId);
 
 /*!
  *  ======== InterruptM3_intRegister ========
  */
-Void InterruptM3_intRegister(Hwi_FuncPtr fxn);
+Void InterruptM3_intRegister(UInt16 remoteProcId, Hwi_FuncPtr fxn, UArg arg);
 
 /*!
  *  ======== InterruptM3_intSend ========
@@ -60,12 +60,11 @@ Void InterruptM3_intRegister(Hwi_FuncPtr fxn);
  */
 Void InterruptM3_intSend(UInt16 remoteProcId,  UArg arg);
 
-
 /*!
  *  ======== InterruptM3_intClear ========
  *  Clear interrupt
  */
-UInt InterruptM3_intClear();
+UInt InterruptM3_intClear(UInt16 remoteProcId);
 
 /*!
  *  ======== InterruptM3_isr ========

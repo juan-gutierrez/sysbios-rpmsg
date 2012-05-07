@@ -50,8 +50,6 @@
 #define REG16(A)   (*(volatile UInt16 *) (A))
 #define REG32(A)   (*(volatile UInt32 *) (A))
 
-#define HOSTINT                 26
-#define DSPINT                  55
 #define M3INT_MBX               50
 #define M3INT                   19
 
@@ -89,24 +87,32 @@ static UInt16 appm3ProcId;
 static UInt16 hostProcId;
 static UInt16 dspProcId;
 
+
+static struct FxnTable {
+	Fxn    func;
+	UArg   arg;
+} table[2];
+
+static UInt32 numPlugged = 0;
+
 /*
  *************************************************************************
  *                      Proxy functions
  *************************************************************************
  */
-Void InterruptProxy_intEnable()
+Void InterruptProxy_intEnable(UInt16 remoteProcId)
 {
-    InterruptM3_intEnable();
+    InterruptM3_intEnable(remoteProcId);
 }
 
-Void InterruptProxy_intDisable()
+Void InterruptProxy_intDisable(UInt16 remoteProcId)
 {
-    InterruptM3_intDisable();
+    InterruptM3_intDisable(remoteProcId);
 }
 
-Void InterruptProxy_intRegister(Hwi_FuncPtr fxn)
+Void InterruptProxy_intRegister(UInt16 remoteProcId, Hwi_FuncPtr fxn, UArg arg)
 {
-    InterruptM3_intRegister(fxn);
+    InterruptM3_intRegister(remoteProcId, fxn, arg);
 }
 
 Void InterruptProxy_intSend(UInt16 remoteProcId, UArg arg)
@@ -114,9 +120,9 @@ Void InterruptProxy_intSend(UInt16 remoteProcId, UArg arg)
     InterruptM3_intSend(remoteProcId, arg);
 }
 
-UInt InterruptProxy_intClear()
+UInt InterruptProxy_intClear(UInt16 remoteProcId)
 {
-    return InterruptM3_intClear();
+    return InterruptM3_intClear(remoteProcId);
 }
 
 
@@ -127,179 +133,205 @@ UInt InterruptProxy_intClear()
  */
 
 /*!
- *  ======== InterruptM3_intEnable ========
+ *  ======== InterruptDucati_intEnable ========
  *  Enable remote processor interrupt
  */
-Void InterruptM3_intEnable()
+Void InterruptDucati_intEnable(UInt16 remoteProcId)
 {
     /*
      *  If the remote processor communicates via mailboxes, we should enable
      *  the Mailbox IRQ instead of enabling the Hwi because multiple mailboxes
      *  share the same Hwi
      */
-    if (Core_getId() == 0) {
-        REG32(MAILBOX_IRQENABLE_SET_M3) = MAILBOX_REG_VAL(HOST_TO_SYSM3_MBX);
-    }
-    else {
-        Hwi_enableInterrupt(M3INT);
-    }
+	if (remoteProcId == MultiProc_getId("HOST")) {
+		REG32(MAILBOX_IRQENABLE_SET_M3) = 0x100;
+	}
+	else if (remoteProcId == MultiProc_getId("DSP")) {
+		REG32(MAILBOX_IRQENABLE_SET_M3) = 0x4;
+	}
 }
 
 /*!
- *  ======== InterruptM3_intDisable ========
+ *  ======== InterruptDucati_intDisable ========
  *  Disables remote processor interrupt
  */
-Void InterruptM3_intDisable()
+Void InterruptDucati_intDisable(UInt16 remoteProcId)
 {
     /*
      *  If the remote processor communicates via mailboxes, we should disable
      *  the Mailbox IRQ instead of disabling the Hwi because multiple mailboxes
      *  share the same Hwi
      */
-    if (Core_getId() == 0) {
-        REG32(MAILBOX_IRQENABLE_CLR_M3) = MAILBOX_REG_VAL(HOST_TO_SYSM3_MBX);
-    }
-    else {
-        Hwi_disableInterrupt(M3INT);
-    }
+	if (remoteProcId == MultiProc_getId("HOST")) {
+		REG32(MAILBOX_IRQENABLE_CLR_M3) = 0x100;
+	}
+	else if (remoteProcId == MultiProc_getId("DSP")) {
+		REG32(MAILBOX_IRQENABLE_CLR_M3) = 0x4;
+	}
 }
 
 /*!
- *  ======== InterruptM3_intRegister ========
+ *  ======== InterruptDucati_intRegister ========
  */
-Void InterruptM3_intRegister(Hwi_FuncPtr fxn)
+Void InterruptDucati_intRegister(UInt16 remoteProcId,
+                                 Fxn func, UArg arg)
 {
     Hwi_Params  hwiAttrs;
     UInt        key;
+    Int         index;
 
-    hostProcId      = MultiProc_getId("HOST");
-    dspProcId       = MultiProc_getId("DSP");
-    sysm3ProcId     = MultiProc_getId("CORE0");
-    appm3ProcId     = MultiProc_getId("CORE1");
+    if (remoteProcId == MultiProc_getId("DSP")) {
+        index = 0;
+    }
+    else if (remoteProcId == MultiProc_getId("HOST")) {
+        index = 1;
+    }
+    else {
+        Error_raise(NULL, Error_E_generic, "Invalid remote processor: %d", remoteProcId);
+    }
 
     /* Disable global interrupts */
     key = Hwi_disable();
 
-    userFxn = fxn;
+    table[index].func = func;
+    table[index].arg  = arg;
+
+    InterruptDucati_intClear(remoteProcId);
+
     Hwi_Params_init(&hwiAttrs);
     hwiAttrs.maskSetting = Hwi_MaskingOption_LOWER;
 
-    if (Core_getId() == 0) {
-        Hwi_create(M3INT_MBX,
-                   (Hwi_FuncPtr)InterruptM3_isr,
-                   &hwiAttrs,
-                   NULL);
-        /* InterruptM3_intEnable won't enable the Hwi */
-        Hwi_enableInterrupt(M3INT_MBX);
-    }
-    else {
-        Hwi_create(M3INT,
-                   (Hwi_FuncPtr)InterruptM3_isr,
-                   &hwiAttrs,
-                   NULL);
-    }
+	numPlugged++;
+	if (numPlugged == 1) {
+		Hwi_create(M3INT_MBX,
+				   (Hwi_FuncPtr) InterruptDucati_intShmMbxStub,
+				   &hwiAttrs,
+				   NULL);
+
+		/* Interrupt_intEnable won't enable the Hwi */
+		Hwi_enableInterrupt(M3INT_MBX);
+	}
 
     /* Enable the mailbox interrupt to the M3 core */
-    InterruptM3_intEnable();
+    InterruptDucati_intEnable(remoteProcId);
 
     /* Restore global interrupts */
     Hwi_restore(key);
+
 }
 
 /*!
- *  ======== InterruptM3_intSend ========
+ *  ======== InterruptDucati_intUnregister ========
+ */
+Void InterruptDucati_intUnregister(UInt16 remoteProcId)
+{
+    Hwi_Handle hwiHandle;
+    Int index;
+    InterruptDucati_FxnTable *table;
+
+    if (remoteProcId == MultiProc_getId("DSP")) {
+        index = 0;
+    }
+    else if (remoteProcId == MultiProc_getId("HOST")) {
+        index = 1;
+    }
+    else {
+        Error_raise(NULL, Error_E_generic, "Invalid remote processor: %d", remoteProcId);
+    }
+
+    /* Disable the mailbox interrupt source */
+    InterruptDucati_intDisable(remoteProcId);
+
+    /* Delete/disable the Hwi */
+
+	numPlugged--;
+	if (numPlugged == 0) {
+		hwiHandle = Hwi_getHandle(M3INT_MBX);
+		Hwi_delete(&hwiHandle);
+	}
+
+    /* Clear the FxnTable entry for the remote processor */
+    table[index].func = NULL;
+    table[index].arg  = 0;
+}
+
+/*!
+ *  ======== InterruptDucati_intSend ========
  *  Send interrupt to the remote processor
  */
-Void InterruptM3_intSend(UInt16 remoteProcId, UArg arg)
+Void InterruptDucati_intSend(UInt16 remoteProcId, UArg arg)
 {
-    Log_print2(Diags_USER1,
-        "InterruptM3_intSend: Sending interrupt with payload 0x%x to proc #%d",
-        (IArg)arg, (IArg)remoteProcId);
-    if (remoteProcId == sysm3ProcId) {
-        while(REG32(MAILBOX_FIFOSTATUS(HOST_TO_SYSM3_MBX)));
-        REG32(MAILBOX_MESSAGE(HOST_TO_SYSM3_MBX)) = arg;
-    }
-    else if (remoteProcId == appm3ProcId) {
-        while(REG32(MAILBOX_FIFOSTATUS(SYSM3_TO_APPM3_MBX)));
-        /* Write to the mailbox, but this won't trigger an interrupt */
-        REG32(MAILBOX_MESSAGE(SYSM3_TO_APPM3_MBX)) = arg;
-        /* Actually trigger the interrupt */
-        REG16(INTERRUPT_CORE_1) |= 0x1;
-    }
-    else if (remoteProcId == dspProcId) {
-        while(REG32(MAILBOX_FIFOSTATUS(HOST_TO_DSP_MBX)));
-        REG32(MAILBOX_MESSAGE(HOST_TO_DSP_MBX)) = arg;
-    }
-    else if (remoteProcId == hostProcId) {
-        while(REG32(MAILBOX_FIFOSTATUS(M3_TO_HOST_MBX)));
-        REG32(MAILBOX_MESSAGE(M3_TO_HOST_MBX)) = arg;
-    }
-    else {
-        /* Should never get here */
-        Assert_isTrue(FALSE, NULL);
-    }
+    UInt key;
+
+     /*
+     *  Before writing to a mailbox, check whehter it already contains a message
+     *  If so, then don't write to the mailbox since we want one and only one
+     *  message per interrupt.  Disable interrupts between reading
+     *  the MSGSTATUS_X register and writing to the mailbox to protect from
+     *  another thread doing an intSend at the same time
+     */
+
+    if (remoteProcId == MultiProc_getId("DSP")) {
+        key = Hwi_disable();
+        if (REG32(MAILBOX_STATUS(M3_TO_DSP)) == 0) {
+            REG32(MAILBOX_MESSAGE(M3_TO_DSP)) = arg;
+        }
+        Hwi_restore(key);
+    } else if(remoteProcId == MultiProc_getId("HOST")) {
+        key = Hwi_disable();
+        if (REG32(MAILBOX_STATUS(M3_TO_HOST)) == 0) {
+            REG32(MAILBOX_MESSAGE(M3_TO_HOST)) = arg;
+        }
+        Hwi_restore(key);
+    } else {
+        Error_raise(NULL, Error_E_generic, "Invalid remote processor: %d", remoteProcId);
+	}
 }
 
 /*!
- *  ======== InterruptM3_intClear ========
- *  Clear interrupt and return payload
+ *  ======== InterruptDucati_intClear ========
+ *  Clear interrupt
  */
-UInt InterruptM3_intClear()
+UInt InterruptDucati_intClear(UInt16 remoteProcId)
 {
-    UInt arg = InterruptM3_INVALIDPAYLOAD;
+    UInt arg;
 
-    /* First check whether incoming mailbox has a message */
-    if (Core_getId() == 0) {
-        /* If FIFO is empty, return InterruptM3_INVALIDPAYLOAD */
-        if (REG32(MAILBOX_STATUS(HOST_TO_SYSM3_MBX)) == 0) {
-            return (arg);
-        }
-        else {
-            /* If there is a message, return the argument to the caller */
-            arg = REG32(MAILBOX_MESSAGE(HOST_TO_SYSM3_MBX));
-            REG32(MAILBOX_IRQSTATUS_CLR_M3) =
-                                        MAILBOX_REG_VAL(HOST_TO_SYSM3_MBX);
-        }
-    }
-    else {
-        /* Clear the inter-M3 interrupt if necessary */
-        if ((REG16(INTERRUPT_CORE_1) & 0x1) == 0x1) {
-            REG16(INTERRUPT_CORE_1) &= ~(0x1);
-        }
-
-        /* If FIFO is empty, return InterruptM3_INVALIDPAYLOAD */
-        if (REG32(MAILBOX_STATUS(SYSM3_TO_APPM3_MBX)) == 0) {
-            return (arg);
-        }
-        else {
-            /* If there is a message, return the argument to the caller */
-            arg = REG32(MAILBOX_MESSAGE(SYSM3_TO_APPM3_MBX));
-            REG32(MAILBOX_IRQSTATUS_CLR_M3) =
-                                        MAILBOX_REG_VAL(SYSM3_TO_APPM3_MBX);
-
-            if (REG32(MAILBOX_STATUS(SYSM3_TO_APPM3_MBX)) != 0) {
-                /* Trigger our own interrupt since another interrupt pending */
-                REG16(INTERRUPT_CORE_1) |= 0x1;
-            }
-        }
-    }
+    if(remoteProcId == MultiProc_getId("HOST")) {
+		arg = REG32(MAILBOX_MESSAGE(HOST_TO_M3));
+		REG32(MAILBOX_IRQSTATUS_CLR_M3) = 0x100; /* Mbx 4 */
+	} else if (remoteProcId == MultiProc_getId("DSP")) {
+		arg = REG32(MAILBOX_MESSAGE(DSP_TO_M3));
+		REG32(MAILBOX_IRQSTATUS_CLR_M3) = 0x4; /* Mbx 1 */
+    } else {
+        Error_raise(NULL, Error_E_generic, "Invalid remote processor: %d", remoteProcId);
+	}
 
     return (arg);
 }
 
-/*!
- *  ======== InterruptM3_isr ========
- *  Calls the function supplied by the user in intRegister
+/*
+ *************************************************************************
+ *                      Internal functions
+ *************************************************************************
  */
-Void InterruptM3_isr(UArg arg)
-{
-    UArg payload;
 
-    payload = InterruptM3_intClear();
-    if (payload != InterruptM3_INVALIDPAYLOAD) {
-        Log_print1(Diags_USER1,
-            "InterruptM3_isr: Interrupt received, payload = 0x%x\n",
-            (IArg)payload);
-        userFxn(payload);
+/*!
+ *  ======== InterruptDucati_intShmMbxStub ========
+ */
+Void InterruptDucati_intShmMbxStub(UArg arg)
+{
+    InterruptDucati_FxnTable *table;
+
+    /* Process messages from the DSP  */
+    if ((REG32(MAILBOX_IRQENABLE_SET_M3) & 0x4) &&
+        REG32(MAILBOX_STATUS(DSP_TO_M3)) != 0) {
+        (table[0].func)(table[0].arg);
+    }
+
+    /* Process messages from the HOST  */
+    if ((REG32(MAILBOX_IRQENABLE_SET_M3) & 0x100) &&
+        REG32(MAILBOX_STATUS(HOST_TO_M3)) != 0) {
+        (table[1].func)(table[1].arg);
     }
 }
+

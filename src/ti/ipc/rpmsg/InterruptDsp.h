@@ -31,30 +31,28 @@
  */
 /*
  *  ======== InterruptDsp.h ========
- *  OMAP4430/DSP Interrupt Manger
+ *  OMAP4430/DSP Interrupt Manager
  */
 
 #include <ti/sysbios/hal/Hwi.h>
 
 #define INVALIDPAYLOAD       (0xFFFFFFFF)
 
-
 /*!
  *  ======== InterruptDsp_intEnable ========
  *  Enable remote processor interrupt
  */
-Void InterruptDsp_intEnable();
+Void InterruptDsp_intEnable(UInt16 remoteProcId);
 
 /*!
  *  ======== InterruptDsp_intDisable ========
  */
-Void InterruptDsp_intDisable();
+Void InterruptDsp_intDisable(UInt16 remoteProcId);
 
 /*!
  *  ======== InterruptDsp_intRegister ========
  */
-Void InterruptDsp_intRegister(Hwi_FuncPtr fxn);
-
+Void InterruptDsp_intRegister(UInt16 remoteProcId, Hwi_FuncPtr fxn, UArg arg);
 
 /*!
  *  ======== InterruptDsp_intSend ========
@@ -62,12 +60,11 @@ Void InterruptDsp_intRegister(Hwi_FuncPtr fxn);
  */
 Void InterruptDsp_intSend(UInt16 remoteProcId,  UArg arg);
 
-
 /*!
  *  ======== InterruptDsp_intClear ========
  *  Clear interrupt
  */
-UInt InterruptDsp_intClear();
+UInt InterruptDsp_intClear(UInt16 remoteProcId);
 
 /*!
  *  ======== InterruptDsp_isr ========
