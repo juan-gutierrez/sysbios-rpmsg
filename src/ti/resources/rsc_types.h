@@ -102,47 +102,6 @@ struct fw_rsc_vdev {
 	char reserved[2];
 };
 
-/*
- * This is an extended vdev, which also indicates the
- * id of the processors that will be communicating via
- * this vdev.
- *
- * This target processor id is indicated by the new
- * target_id field.
- */
-struct fw_rsc_evdev {
-	UInt32 type;
-	UInt32 id;
-	UInt32 proc_id1;
-	UInt32 proc_id2;
-	UInt32 notify_id;
-	UInt32 features1;
-	UInt32 features2;
-	UInt32 config_len;
-	UInt32 reserved;
-	char status1;
-	char status2;
-	char num_of_vrings;
-	char padding;
-};
-
-/*
- * this is an extended vring structure.
- *
- * it contains the device address of both subsystems,
- * so communication can take place.
- */
-#define EVDEV_MASTER_ALLOCATES_VRING 1
-struct fw_rsc_evdev_vring {
-	UInt32 da1; /* device address of subsystem1*/
-	UInt32 pa; /* physical address */
-	UInt32 da2; /* device address of subsystem2*/
-	UInt32 align;
-	UInt32 num;
-	UInt32 notify_id;
-	UInt32 flags;
-	UInt32 reserved;
-};
 
 struct resource_table {
 	UInt32 version;
@@ -165,9 +124,9 @@ struct resource_table {
 	 *
 	 * this is going to be a symmetric vring vdev.
 	 */
-	struct fw_rsc_evdev rpmsg_tesla_vdev;
-	struct fw_rsc_evdev_vring rpmsg_tesla_tx_vring;
-	struct fw_rsc_evdev_vring rpmsg_tesla_rx_vring;
+//	struct fw_rsc_evdev rpmsg_tesla_vdev;
+//	struct fw_rsc_evdev_vring rpmsg_tesla_tx_vring;
+//	struct fw_rsc_evdev_vring rpmsg_tesla_rx_vring;
 
 	/* data carveout entry */
 	struct fw_rsc_carveout data_cout;
@@ -206,4 +165,37 @@ struct resource_table {
 	struct fw_rsc_devmem devmem7;
 };
 
+
+
+struct shared_ipc_page {
+ u32 version;		//needed to ensure backwards compatibility
+ u32 num;			//numbers of entries in the page
+ u32 reserved[2];
+ u32 offsets[];		//array of offsets to the entries in this page
+};
+
+struct fw_rsc_evdev {
+	u32 virtio_id; //RPMSG...
+	u32 proc_id1; //id of the subsystem with the lower id integer
+	u32 proc_id2; //id of the subsystem with the higher id integer
+	u32 notify_id; //notification id representing status changes of this evdev
+	u32 features1; //virtio features supported by the first subsystem
+	u32 features2; //virtio features supported by the second subsystem
+	u32 config_len; //length of config space (comes right after the vrings)
+	u32 reserved;
+	u8 status1; //status of first subsystem
+	u8 status2; //status of second subsystem
+	u8 num_of_vrings; //number of vring entries (come right after this structure)
+	u8 reserved;
+};
+
+
+struct fw_rsc_devmem2 {
+	u32 da1; //device address of subsystem1 (i.e. The one with the lowed id)
+	u32 da2; //device address of subsystem2 (i.e. The one with the higher id)
+	u32 len;
+	u32 flags;
+	u32 reserved;
+	u32 name[32];
+};
 #endif /* _RSC_TYPES_H_ */

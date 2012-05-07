@@ -92,17 +92,6 @@
 extern "C" {
 #endif
 
-typedef enum VirtQueue_dir {
-	VirtQueue_TX,
-	VirtQueue_RX
-} VirtQueue_dir;
-
-typedef struct Vring_params {
-	UInt32	num;
-	UInt32	addr;
-	UInt32	align;
-} Vring_params;
-
 /*!
  *  @brief  a queue to register buffers for sending or receiving.
  */
