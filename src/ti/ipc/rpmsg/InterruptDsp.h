@@ -38,6 +38,8 @@
 
 #define INVALIDPAYLOAD       (0xFFFFFFFF)
 
+typedef Void (*InterruptFxn)(UArg, UArg);
+
 /*!
  *  ======== InterruptDsp_intEnable ========
  *  Enable remote processor interrupt
@@ -52,7 +54,7 @@ Void InterruptDsp_intDisable(UInt16 remoteProcId);
 /*!
  *  ======== InterruptDsp_intRegister ========
  */
-Void InterruptDsp_intRegister(UInt16 remoteProcId, Hwi_FuncPtr fxn, UArg arg);
+Void InterruptDsp_intRegister(UInt16 remoteProcId, InterruptFxn fxn, UArg arg);
 
 /*!
  *  ======== InterruptDsp_intSend ========

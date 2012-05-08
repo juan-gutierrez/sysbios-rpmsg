@@ -165,7 +165,10 @@ typedef struct VirtQueueS2S_Object {
     UInt16                  id;
 
     /* The function to call when buffers are consumed (can be NULL) */
-    VirtQueueS2S_callback      callback;
+    VirtQueueS2S_callback   callback;
+
+    /* The private data to pass to the callback (can be NULL) */
+    UArg				    callback_priv;
 
     /* Shared state */
     struct vring            vring;
@@ -185,8 +188,9 @@ typedef struct VirtQueueS2S_Object {
     UInt8*					status;
 
 	/* Indicates TX or RX direction */
-    VirtQueueS2S_dir			direction;
+    VirtQueueS2S_dir		direction;
 } VirtQueueS2S_Object;
+
 
 static struct VirtQueueS2S_Object *queueRegistry[MAX_VIRTQUEUES];
 
@@ -359,7 +363,7 @@ Bool VirtQueueS2S_enableCallback(VirtQueueS2S_Object *vq)
  * ======== VirtQueueS2S_isr ========
  * Note 'arg' is ignored: it is the Hwi argument, not the mailbox argument.
  */
-Void VirtQueueS2S_isr(UArg msg)
+Void VirtQueueS2S_isr(UArg msg, UArg priv)
 {
     VirtQueueS2S_Object *vq;
 
@@ -367,7 +371,7 @@ Void VirtQueueS2S_isr(UArg msg)
 
 	vq = queueRegistry[msg];
 	if (vq) {
-		vq->callback(vq);
+		vq->callback(vq->callback_priv);
 	}
 }
 
@@ -375,7 +379,7 @@ Void VirtQueueS2S_isr(UArg msg)
 /*!
  * ======== VirtQueueS2S_create ========
  */
-VirtQueueS2S_Object *VirtQueueS2S_create(UInt32 vqId, UInt32 remoteprocId,
+VirtQueueS2S_Handle VirtQueueS2S_create(UInt32 vqId, UInt32 remoteprocId,
 	VirtQueueS2S_callback callback, Vring_params *params,
 	VirtQueueS2S_dir direction, UInt8 *status_addr)
 {
@@ -444,7 +448,7 @@ VirtQueueS2S_Object *VirtQueueS2S_create(UInt32 vqId, UInt32 remoteprocId,
 /*!
  * ======== VirtQueueS2S_get ========
  */
-VirtQueueS2S_Object *VirtQueueS2S_get(UInt32 vqid)
+VirtQueueS2S_Object *VirtQueueS2S_getHandle(UInt32 vqid)
 {
     VirtQueueS2S_Object *vq = NULL;
 
@@ -458,13 +462,14 @@ VirtQueueS2S_Object *VirtQueueS2S_get(UInt32 vqid)
 /*!
  * ======== VirtQueueS2S_setCallback ========
  */
-Int VirtQueueS2S_setCallback(UInt32 vqid, VirtQueueS2S_callback callback, UArg data)
+Int VirtQueueS2S_setCallback(UInt32 vqid, VirtQueueS2S_callback callback, UArg priv)
 {
     Int status = 1;
     VirtQueueS2S_Object *vq = VirtQueueS2S_get(UInt32 vqid);
 
 	if(vq) {
 		vq->callback = callback;
+		vq->callback_priv = priv;
 		status = 0;
 	}
 

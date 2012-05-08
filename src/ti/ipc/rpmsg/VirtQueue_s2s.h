@@ -92,6 +92,17 @@
 extern "C" {
 #endif
 
+typedef enum VirtQueue_dir {
+	VirtQueue_TX,
+	VirtQueue_RX
+} VirtQueue_dir;
+
+typedef struct Vring_params {
+	UInt32	num;
+	UInt32	addr;
+	UInt32	align;
+} Vring_params;
+
 /*!
  *  @brief  a queue to register buffers for sending or receiving.
  */
@@ -104,7 +115,7 @@ typedef struct VirtQueue_Object *VirtQueue_Handle;
  *
  *  @param[in]  VirtQueue     Pointer to the VirtQueue which was signalled.
  */
-typedef Void (*VirtQueue_callback)(VirtQueue_Handle);
+typedef Void (*VirtQueue_callback)(UArg);
 
 /*!
  *  @brief      Initialize at runtime the VirtQueue
@@ -114,7 +125,9 @@ typedef Void (*VirtQueue_callback)(VirtQueue_Handle);
  *
  *  @Returns    Returns a handle to a new initialized VirtQueue.
  */
-VirtQueue_Handle VirtQueue_create(VirtQueue_callback callback, UInt16 procId, int vqid);
+VirtQueueS2S_Handle VirtQueueS2S_create(UInt32 vqId, UInt32 remoteprocId,
+	VirtQueueS2S_callback callback, Vring_params *params,
+	VirtQueueS2S_dir direction, UInt8 *status_addr);
 
 
 /*!
@@ -134,6 +147,14 @@ Void VirtQueue_kick(VirtQueue_Handle vq);
  *  Should be called before any other VirtQueue APIs
  */
 Void VirtQueue_startup();
+
+Int VirtQueueS2S_setCallback(UInt32 vqid, VirtQueueS2S_callback callback, UArg priv);
+
+VirtQueueS2S_Handle *VirtQueueS2S_getHandle(UInt32 vqid);
+
+Void VirtQueueS2S_prime(VirtQueueS2S_Object *vq, UInt16 remoteprocId, int vqid);
+
+Bool VirtioIPC_getVirtQueues(UInt32 type, UInt32 procId, UInt32 rank, UInt32 *tx_vqId, UInt32 *rx_vqId);
 
 
 /*

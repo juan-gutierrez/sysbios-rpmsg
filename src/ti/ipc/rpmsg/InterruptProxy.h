@@ -45,24 +45,25 @@ extern "C" {
 
 #define INVALIDPAYLOAD       (0xFFFFFFFF)
 
+typedef Void (*InterruptFxn)(UArg, UArg);
 
 /*!
  *  ======== InterruptProxy_intEnable ========
  *  Enable remote processor interrupt
  */
-Void InterruptProxy_intEnable();
+Void InterruptProxy_intEnable(UInt16 remoteProcId);
 
 /*!
  *  ======== InterruptProxy_intDisable ========
  *  Disable remote processor interrupt
  */
-Void InterruptProxy_intDisable();
+Void InterruptProxy_intDisable(UInt16 remoteProcId);
 
 /*!
  *  ======== InterruptProxy_intRegister ========
  *  Register a Hwi function for the remote processor interrupt
  */
-Void InterruptProxy_intRegister(Hwi_FuncPtr fxn);
+Void InterruptProxy_intRegister(UInt16 remoteProcId, InterruptFxn fxn, UArg arg);
 
 /*!
  *  ======== InterruptProxy_intSend ========
@@ -74,7 +75,7 @@ Void InterruptProxy_intSend(UInt16 remoteProcId,  UArg arg);
  *  ======== InterruptProxy_intClear ========
  *  Clear interrupt
  */
-UInt InterruptProxy_intClear();
+UInt InterruptProxy_intClear(UInt16 remoteProcId);
 
 #if defined (__cplusplus)
 }

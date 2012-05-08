@@ -36,6 +36,7 @@
 
 #include <xdc/std.h>
 #include <xdc/runtime/Assert.h>
+#include <xdc/runtime/Error.h>
 
 #include <ti/sysbios/hal/Hwi.h>
 #include <ti/sysbios/family/c64p/tesla/Wugen.h>
@@ -53,13 +54,12 @@
 #define DSPEVENTID              55
 
 /* Assigned mailboxes */
-#define HOST_TO_SYSM3_MBX       0 /* Rx on SysM3 from Host */
-#define M3_TO_HOST_MBX          1 /* Tx to Host from M3 */
-#define DSP_TO_HOST_MBX         2 /* Tx to Host from DSP */
-#define HOST_TO_DSP_MBX         3 /* Rx on DSP from Host */
-#define SYSM3_TO_APPM3_MBX      4 /* Rx on AppM3 from Host/SysM3 */
-#define DSP_TO_SYSM3_MBX		5
-#define SYSM3_TO_DSP_MBX		6
+#define HOST_TO_IPU_MBX		0 /* Rx on IPU from Host */
+#define IPU_TO_HOST_MBX     1 /* Tx to Host from IPU */
+#define DSP_TO_HOST_MBX     2 /* Tx to Host from DSP */
+#define HOST_TO_DSP_MBX     3 /* Rx on DSP from Host */
+#define IPU_TO_DSP_MBX		5
+#define DSP_TO_IPU_MBX		6
 
 #define MAILBOX_BASEADDR    (0x4A0F4000)
 
@@ -73,11 +73,15 @@
 
 
 static struct FxnTable {
-	Fxn    func;
+	InterruptFxn    func;
 	UArg   arg;
 } table[2];
 
 static UInt32 numPlugged = 0;
+static Hwi_Handle interruptDspHwi = NULL;
+
+Void InterruptDsp_intShmStub(UArg arg);
+
 
 /*
  *************************************************************************
@@ -94,7 +98,7 @@ Void InterruptProxy_intDisable(UInt16 remoteProcId)
     InterruptDsp_intDisable(remoteProcId);
 }
 
-Void InterruptProxy_intRegister(UInt16 remoteProcId, Hwi_FuncPtr fxn, UArg arg)
+Void InterruptProxy_intRegister(UInt16 remoteProcId, InterruptFxn fxn, UArg arg)
 {
     InterruptDsp_intRegister(remoteProcId, fxn, arg);
 }
@@ -147,7 +151,7 @@ Void InterruptDsp_intDisable(UInt16 remoteProcId)
 /*!
  *  ======== InterruptDsp_intRegister ========
  */
-Void InterruptDsp_intRegister(UInt16 remoteProcId, Fxn func, UArg arg)
+Void InterruptDsp_intRegister(UInt16 remoteProcId, InterruptFxn func, UArg arg)
 {
     UInt        key;
     Int         index;
@@ -176,7 +180,7 @@ Void InterruptDsp_intRegister(UInt16 remoteProcId, Fxn func, UArg arg)
     if (numPlugged == 1) {
         Hwi_Params_init(&hwiParams);
         hwiParams.eventId = DSPEVENTID;
-        Hwi_create(DSPINT,
+        interruptDspHwi = Hwi_create(DSPINT,
                    (Hwi_FuncPtr)InterruptDsp_intShmStub,
                    &hwiParams,
                    NULL);
@@ -198,14 +202,13 @@ Void InterruptDsp_intRegister(UInt16 remoteProcId, Fxn func, UArg arg)
  */
 Void InterruptDsp_intUnregister(UInt16 remoteProcId)
 {
-    Hwi_Handle  hwiHandle;
     Int         index;
-    InterruptDsp_FxnTable *table;
+//    InterruptDsp_FxnTable *table;
 
-    if (remoteProcId == InterruptDsp_hostProcId) {
+    if (remoteProcId == MultiProc_getId("HOST")) {
         index = 0;
     }
-    else if (remoteProcId == InterruptDsp_core0ProcId) {
+    else if (remoteProcId == MultiProc_getId("CORE0")) {
         index = 1;
     }
     else {
@@ -219,8 +222,7 @@ Void InterruptDsp_intUnregister(UInt16 remoteProcId)
     numPlugged--;
     if (numPlugged == 0) {
         /* Delete the Hwi */
-        hwiHandle = Hwi_getHandle(DSPINT);
-        Hwi_delete(&hwiHandle);
+        Hwi_delete(&interruptDspHwi);
     }
 
     table[index].func = NULL;
@@ -246,16 +248,16 @@ Void InterruptDsp_intSend(UInt16 remoteProcId,
     if (remoteProcId == MultiProc_getId("HOST")) {
         /* Using mailbox 0 */
         key = Hwi_disable();
-        if (REG32(MAILBOX_STATUS(DSP_TO_MPU)) == 0) {
-            REG32(MAILBOX_MESSAGE(DSP_TO_MPU)) = arg;
+        if (REG32(MAILBOX_STATUS(DSP_TO_HOST_MBX)) == 0) {
+            REG32(MAILBOX_MESSAGE(DSP_TO_HOST_MBX)) = arg;
         }
         Hwi_restore(key);
     }
     else if (remoteProcId == MultiProc_getId("CORE0")) {
         /* Using mailbox 1 */
         key = Hwi_disable();
-        if (REG32(MAILBOX_STATUS(DSP_TO_M3)) == 0) {
-            REG32(MAILBOX_MESSAGE(DSP_TO_M3)) = arg;
+        if (REG32(MAILBOX_STATUS(DSP_TO_HOST_MBX)) == 0) {
+            REG32(MAILBOX_MESSAGE(DSP_TO_HOST_MBX)) = arg;
         }
         Hwi_restore(key);
     }
@@ -275,12 +277,12 @@ UInt InterruptDsp_intClear(UInt16 remoteProcId)
 
     if (remoteProcId == MultiProc_getId("HOST")) {
         /* Mailbox 3 */
-        arg = REG32(MAILBOX_MESSAGE(MPU_TO_DSP));
+        arg = REG32(MAILBOX_MESSAGE(HOST_TO_DSP_MBX));
         REG32(MAILBOX_IRQSTATUS_CLR_DSP) = 0x40;
     }
     else if (remoteProcId == MultiProc_getId("CORE0")) {
         /* Mailbox 2 */
-        arg = REG32(MAILBOX_MESSAGE(M3_TO_DSP));
+        arg = REG32(MAILBOX_MESSAGE(IPU_TO_DSP_MBX));
         REG32(MAILBOX_IRQSTATUS_CLR_DSP) = 0x10;
     }
     else {
@@ -301,17 +303,22 @@ UInt InterruptDsp_intClear(UInt16 remoteProcId)
  */
 Void InterruptDsp_intShmStub(UArg arg)
 {
-    InterruptDsp_FxnTable *table;
+//    InterruptDsp_FxnTable *table;
+    UInt msg;
 
     /* Process messages from  HOST */
     if ((REG32(MAILBOX_IRQENABLE_SET_DSP) & 0x40) &&
-        REG32(MAILBOX_STATUS(MPU_TO_DSP)) != 0) {
-        (table[0].func)(table[0].arg);
+			REG32(MAILBOX_STATUS(HOST_TO_DSP_MBX)) != 0) {
+        msg = REG32(MAILBOX_MESSAGE(HOST_TO_DSP_MBX));
+        REG32(MAILBOX_IRQSTATUS_CLR_DSP) = 0x40;
+        (table[0].func)(msg, table[0].arg);
     }
 
     /* Process messages from CORE0 */
     if ((REG32(MAILBOX_IRQENABLE_SET_DSP) & 0x10) &&
-        REG32(MAILBOX_STATUS(M3_TO_DSP)) != 0) {
-        (table[1].func)(table[1].arg);
+			REG32(MAILBOX_STATUS(IPU_TO_DSP_MBX)) != 0) {
+        msg = REG32(MAILBOX_MESSAGE(IPU_TO_DSP_MBX));
+        REG32(MAILBOX_IRQSTATUS_CLR_DSP) = 0x10;
+        (table[1].func)(msg, table[1].arg);
     }
 }

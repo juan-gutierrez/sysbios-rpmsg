@@ -197,7 +197,7 @@ static Void MessageQCopyS2S_swiFxn(UArg arg0, UArg arg1)
 
 
 #define FXNN "callback_availBufReady"
-static Void callback_availBufReady(Ptr priv)
+static Void callback_availBufReady(UArg priv)
 {
 	MessageQCopyS2S_callbackData *cbd = (MessageQCopyS2S_callbackData*)priv;
 
@@ -269,7 +269,7 @@ Void MessageQCopyS2S_init(UInt16 remoteProcId)
 			Swi_Params_init(&params);
 			params.arg0 = &module.VQ_callbacks[rx_vqid];
 			module.VQ_callbacks[rx_vqid].swi = Swi_create(MessageQCopyS2S_swiFxn, &params, NULL);
-			VirtQueueS2S_setCallback(rx_vqid, callback_availBufReady, (Void*)&module.VQ_callbacks[rx_vqid]);
+			VirtQueueS2S_setCallback(rx_vqid, callback_availBufReady, (UArg)&module.VQ_callbacks[rx_vqid]);
 
 			/* setup the sending path */
 			module.primary_VQs[p] = tx_vqid;

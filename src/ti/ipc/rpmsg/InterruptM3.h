@@ -38,6 +38,8 @@
 
 #define InterruptM3_INVALIDPAYLOAD       (0xFFFFFFFF)
 
+typedef Void (*InterruptFxn)(UArg, UArg);
+
 /*!
  *  ======== InterruptM3_intEnable ========
  *  Enable remote processor interrupt
@@ -52,7 +54,7 @@ Void InterruptM3_intDisable(UInt16 remoteProcId);
 /*!
  *  ======== InterruptM3_intRegister ========
  */
-Void InterruptM3_intRegister(UInt16 remoteProcId, Hwi_FuncPtr fxn, UArg arg);
+Void InterruptM3_intRegister(UInt16 remoteProcId, InterruptFxn fxn, UArg arg);
 
 /*!
  *  ======== InterruptM3_intSend ========
