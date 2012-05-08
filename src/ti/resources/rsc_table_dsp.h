@@ -81,6 +81,10 @@
 #define BUFS0_DA                0xA0040000
 #define BUFS1_DA                0xA0080000
 
+#define MEM_INTERPROC           0xA0100000
+#define PHYS_MEM_INTERPROC      0xA9100000
+
+
 /*
  * sizes of the virtqueues (expressed in number of buffers supported,
  * and must be power of 2)
@@ -210,6 +214,10 @@ struct resource_table resources = {
 	},
 
 	{
+		TYPE_CARVEOUT, MEM_INTERPROC, 0, PHYS_MEM_INTERPROC, 0, 0, "B2B_VRING",
+	},
+
+	{
 		TYPE_TRACE, TRACEBUFADDR, 0x8000, 0, "trace:dsp",
 	},
 
@@ -247,5 +255,12 @@ struct resource_table resources = {
 		SZ_16M, 0, 0, "DSP_PERIPHERAL_L4PER",
 	},
 };
+
+
+#pragma DATA_SECTION(shared_page, ".ipu_dsp_shared_page")
+#pragma DATA_ALIGN(shared_page, 4096)
+
+
+struct ipu_dsp_shared_page shared_page;
 
 #endif /* _RSC_TABLE_DSP_H_ */

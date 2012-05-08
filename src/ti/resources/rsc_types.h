@@ -198,4 +198,12 @@ struct fw_rsc_devmem2 {
 	u32 reserved;
 	u32 name[32];
 };
+
+
+struct ipu_dsp_shared_page {
+	struct shared_ipc_page		page_header;
+	struct fw_rsc_evdev			evdev1;
+	struct fw_rsc_vdev_vring	vring1;
+	struct fw_rsc_vdev_vring	vring2;
+}
 #endif /* _RSC_TYPES_H_ */

@@ -94,6 +94,11 @@
 
 #define DUCATI_TO_TESLA_RPMSG_TX_VRING_DA 0x0
 
+#define MEM_INTERPROC           0xA0100000
+#define PHYS_MEM_INTERPROC      0xA9100000
+#define IPU_TO_DSP_VRING		0xA0101000
+#define DSP_TO_IPU_VRING		0xA0102000
+
 /*
  * sizes of the virtqueues (expressed in number of buffers supported,
  * and must be power of 2)
@@ -217,6 +222,10 @@ struct resource_table resources = {
 	},
 
 	{
+		TYPE_CARVEOUT, MEM_INTERPROC, 0, PHYS_MEM_INTERPROC, 0, 0, "B2B_VRING",
+	},
+
+	{
 		TYPE_CARVEOUT, TEXT_DA, 0, TEXT_SIZE, 0, 0, "IPU_MEM_TEXT",
 	},
 
@@ -271,4 +280,24 @@ struct resource_table resources = {
 	},
 };
 
+
+#pragma DATA_SECTION(shared_page, ".ipu_dsp_shared_page")
+#pragma DATA_ALIGN(shared_page, 4096)
+
+
+struct ipu_dsp_shared_page shared_page = {
+	{
+		1, 1, 0, 0,
+		offsetof(struct ipu_dsp_shared_page, evdev1)
+	},
+	{
+		1, 1, 2, 0xff, 0, 0, 0, 0, 0, 0, 2, 0
+	},
+	{
+		IPU_TO_DSP_VRING, 4096, 256, 1, 0
+	},
+	{
+		DSP_TO_IPU_VRING, 4096, 256, 2, 0
+	}
+}
 #endif /* _RSC_TABLE_H_ */

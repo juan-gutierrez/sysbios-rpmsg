@@ -52,6 +52,12 @@ module IpcMemory {
     metaonly config UInt loadAddr = 0x3000;
 
     /*!
+     *  @def    IpcMemory_sharedPageAddr
+     *  @brief  Default load address for the IpcMemory table
+     */
+    metaonly config UInt sharedPageAddr = 0xa0100000;
+
+    /*!
      *  @def    IpcMemory_loadSegment
      *  @brief  If loadSegment is defined, loadAddr is overriden with the base
      *          address of the loadSegment
