@@ -38,7 +38,7 @@
  */
 
 /* this define must precede inclusion of any xdc header file */
-#define Registry_CURDESC ti_ipc_rpmsg_MessageQCopy__Desc
+#define Registry_CURDESC ti_ipc_rpmsg_MessageQCopyS2S__Desc
 #define MODULE_NAME "ti.ipc.rpmsg.MessageQCopy"
 
 #include <xdc/std.h>
@@ -76,32 +76,32 @@
 #define HEAPALIGNMENT          8
 
 /* The MessageQCopy Object */
-typedef struct MessageQCopy_Object {
+typedef struct MessageQCopyS2S_Object {
     UInt32           queueId;      /* Unique id (procId | queueIndex)       */
     Semaphore_Handle semHandle;    /* I/O Completion                        */
     List_Handle      queue;        /* Queue of pending messages             */
     Bool             unblocked;    /* Use with signal to unblock _receive() */
-    MessageQCopy_EndptPool *pool;  /* track associated pool for cleanup     */
-} MessageQCopy_Object;
+    MessageQCopyS2S_EndptPool *pool;  /* track associated pool for cleanup     */
+} MessageQCopyS2S_Object;
 
 
 /* This struct is used as private data supplied to the VQ callback */
 /* function.  It is also the passed to the SWI through arg0.       */
-typdef struct MessageQCopy_callbackData {
-	UInt32				vqid;
-	VirtQueue_Handle	*pool;
-	Swi_Handle			swi;
-} MessageQCopy_callbackData;
+typdef struct MessageQCopyS2S_callbackData {
+	UInt32					vqid;
+	MessageQCopyS2S_EndptPool	*pool;
+	Swi_Handle				swi;
+} MessageQCopyS2S_callbackData;
 
 
 /* Endpoint pool maps an endpoint to message queue. */
-typedef MessageQCopy_Object*[MAXENDPOINTS] MessageQCopy_EndptPool;
-#define MessageQCopy_lookupEndpnt(p, e)	(((MessageQCopy_Object*)(p))[(e)])
-#define MessageQCopy_assignEndpnt(p, e, obj)	(((MessageQCopy_Object*)(p))[(e)] = (obj))
+typedef MessageQCopyS2S_Object*[MAXENDPOINTS] MessageQCopyS2S_EndptPool;
+#define MessageQCopyS2S_lookupEndpnt(p, e)	(((MessageQCopyS2S_Object*)(p))[(e)])
+#define MessageQCopyS2S_assignEndpnt(p, e, obj)	(((MessageQCopyS2S_Object*)(p))[(e)] = (obj))
 
 
 /* Module_State */
-typedef struct MessageQCopy_Module {
+typedef struct MessageQCopyS2S_Module {
     /* Instance gate: */
     GateSwi_Handle gateSwi;
 
@@ -109,33 +109,33 @@ typedef struct MessageQCopy_Module {
 	UInt32 primary_VQs[MAXREMOTEPROCS];
 
 	/* References to callbackData indexed by vqid */
-	MessageQCopy_callbackData VQ_callbacks[MAXREMOTEPROCS*2];
+	MessageQCopyS2S_callbackData VQ_callbacks[MAXREMOTEPROCS*2];
 
 	/* Global endpoint pool */
-	MessageQCopy_EndptPool global_pool;
+	MessageQCopyS2S_EndptPool global_pool;
 
 	/* Lookup endpoint pool from procId.  Array indexed by procId. */
-	/*	MessageQCopy_EndptPool pools[MAXREMOTEPROCS]; */
+	/*	MessageQCopyS2S_EndptPool pools[MAXREMOTEPROCS]; */
 
     /* Heap from which to allocate free messages for copying: */
     HeapBuf_Handle              heap;
-} MessageQCopy_Module;
+} MessageQCopyS2S_Module;
 
 /* For use with module.primary_VQs */
 #define NO_PRIMARY_VQ ((UInt32)-1);
 
 
 /* Message Header: Must match mp_msg_hdr in virtio_rp_msg.h on Linux side. */
-typedef struct MessageQCopy_MsgHeader {
+typedef struct MessageQCopyS2S_MsgHeader {
     Bits32 srcAddr;                 /* source endpoint addr               */
     Bits32 dstAddr;                 /* destination endpoint addr          */
     Bits32 reserved;                /* reserved                           */
     Bits16 dataLen;                 /* data length                        */
     Bits16 flags;                   /* bitmask of different flags         */
     UInt8  payload[];               /* Data payload                       */
-} MessageQCopy_MsgHeader;
+} MessageQCopyS2S_MsgHeader;
 
-typedef MessageQCopy_MsgHeader *MessageQCopy_Msg;
+typedef MessageQCopyS2S_MsgHeader *MessageQCopyS2S_Msg;
 
 /* Element to hold payload copied onto receiver's queue.                  */
 typedef struct Queue_elem {
@@ -151,44 +151,44 @@ typedef struct Queue_elem {
 /* module diags mask */
 Registry_Desc Registry_CURDESC;
 
-static MessageQCopy_Module      module;
+static MessageQCopyS2S_Module      module;
 
 
 /* Module ref count: */
 static Int curInit = 0;
 
 /*
- *  ======== MessageQCopy_swiFxn ========
+ *  ======== MessageQCopyS2S_swiFxn ========
  */
-#define FXNN "MessageQCopy_swiFxn"
-static Void MessageQCopy_swiFxn(UArg arg0, UArg arg1)
+#define FXNN "MessageQCopyS2S_swiFxn"
+static Void MessageQCopyS2S_swiFxn(UArg arg0, UArg arg1)
 {
-	MessageQCopy_swiData *swiData = (MessageQCopy_swiData *)arg0;
-    MessageQCopy_Msg  msg;
-    VirtQueue_Handle vq;
+	MessageQCopyS2S_swiData *swiData = (MessageQCopyS2S_swiData *)arg0;
+    MessageQCopyS2S_Msg  msg;
+    VirtQueueS2S_Handle vq;
     Bool              usedBufAdded = FALSE;
 
     Log_print0(Diags_ENTRY, "--> "FXNN);
 
-	vq = VirtQueue_get(swiData->vqid);
+	vq = VirtQueueS2S_get(swiData->vqid);
 
 	/* Process all available buffers: */
-    while ((msg = VirtQueue_getUsedBuf(vq)) != NULL) {
+    while ((msg = VirtQueueS2S_getUsedBuf(vq)) != NULL) {
 
         Log_print3(Diags_USER1, FXNN": \n\tReceived Simm msg: from: 0x%x, "
                    "to: 0x%x, dataLen: %d",
                   (IArg)msg->srcAddr, (IArg)msg->dstAddr, (IArg)msg->dataLen);
 
         /* Pass to desitination queue (which is on this proc): */
-        MessageQCopy_enqueMsg(swoData->pool, msg);
+        MessageQCopyS2S_enqueMsg(swoData->pool, msg);
 
-        VirtQueue_addAvailBuf(vq, msg);
+        VirtQueueS2S_addAvailBuf(vq, msg);
         usedBufAdded = FALSE;
     }
 
     if (usedBufAdded)  {
        /* Tell host we've processed the buffers: */
-       VirtQueue_kick(vq);
+       VirtQueueS2S_kick(vq);
     }
 
     Log_print0(Diags_EXIT, "<-- "FXNN);
@@ -199,7 +199,7 @@ static Void MessageQCopy_swiFxn(UArg arg0, UArg arg1)
 #define FXNN "callback_availBufReady"
 static Void callback_availBufReady(Ptr priv)
 {
-	MessageQCopy_callbackData *cbd = (MessageQCopy_callbackData*)priv;
+	MessageQCopyS2S_callbackData *cbd = (MessageQCopyS2S_callbackData*)priv;
 
     if (cbd->swi)  {
        /* Post a SWI to process all incoming messages */
@@ -219,8 +219,8 @@ static Void callback_availBufReady(Ptr priv)
  *
  *
  */
-#define FXNN "MessageQCopy_init"
-Void MessageQCopy_init(UInt16 remoteProcId)
+#define FXNN "MessageQCopyS2S_init"
+Void MessageQCopyS2S_init(UInt16 remoteProcId)
 {
     GateSwi_Params gatePrms;
     HeapBuf_Params prms;
@@ -255,7 +255,7 @@ Void MessageQCopy_init(UInt16 remoteProcId)
     prms.align        = HEAPALIGNMENT;
     module.heap       = HeapBuf_create(&prms, NULL);
     if (module.heap == 0) {
-       System_abort("MessageQCopy_init: HeapBuf_create returned 0\n");
+       System_abort("MessageQCopyS2S_init: HeapBuf_create returned 0\n");
     }
 
 	/* Setup the module's key data structures that control the  */
@@ -268,8 +268,8 @@ Void MessageQCopy_init(UInt16 remoteProcId)
 
 			Swi_Params_init(&params);
 			params.arg0 = &module.VQ_callbacks[rx_vqid];
-			module.VQ_callbacks[rx_vqid].swi = Swi_create(MessageQCopy_swiFxn, &params, NULL);
-			VirtQueue_setCallback(rx_vqid, callback_availBufReady, (Void*)&module.VQ_callbacks[rx_vqid]);
+			module.VQ_callbacks[rx_vqid].swi = Swi_create(MessageQCopyS2S_swiFxn, &params, NULL);
+			VirtQueueS2S_setCallback(rx_vqid, callback_availBufReady, (Void*)&module.VQ_callbacks[rx_vqid]);
 
 			/* setup the sending path */
 			module.primary_VQs[p] = tx_vqid;
@@ -288,8 +288,8 @@ Void MessageQCopy_init(UInt16 remoteProcId)
 /*
  *  ======== MessasgeQCopy_finalize ========
  */
-#define FXNN "MessageQCopy_finalize"
-Void MessageQCopy_finalize()
+#define FXNN "MessageQCopyS2S_finalize"
+Void MessageQCopyS2S_finalize()
 {
 	UInt32 vqid;
 	Log_print0(Diags_ENTRY, "--> "FXNN);
@@ -312,19 +312,19 @@ Void MessageQCopy_finalize()
 
 
 
-MessageQCopy_Handle MessageQCopy_create(UInt32 reserved, UInt32 * endpoint)
+MessageQCopyS2S_Handle MessageQCopyS2S_create(UInt32 reserved, UInt32 * endpoint)
 {
-    return MessageQCopy_rawCreate(&module.global_pool, reserved, endpoint);
+    return MessageQCopyS2S_rawCreate(&module.global_pool, reserved, endpoint);
 }
 
 
 /*
- *  ======== MessageQCopy_create ========
+ *  ======== MessageQCopyS2S_create ========
  */
-#define FXNN "MessageQCopy_create"
-MessageQCopy_Handle MessageQCopy_rawCreate(MessageQCopy_EndptPool* pool, UInt32 reserved, UInt32 * endpoint)
+#define FXNN "MessageQCopyS2S_create"
+MessageQCopyS2S_Handle MessageQCopyS2S_rawCreate(MessageQCopyS2S_EndptPool* pool, UInt32 reserved, UInt32 * endpoint)
 {
-    MessageQCopy_Object    *obj = NULL;
+    MessageQCopyS2S_Object    *obj = NULL;
     Bool                   found = FALSE;
     Int                    i;
     UInt16                 queueIndex = 0;
@@ -337,25 +337,25 @@ MessageQCopy_Handle MessageQCopy_rawCreate(MessageQCopy_EndptPool* pool, UInt32 
 
     key = GateSwi_enter(module.gateSwi);
 
-    if (reserved == MessageQCopy_ASSIGN_ANY)  {
+    if (reserved == MessageQCopyS2S_ASSIGN_ANY)  {
        /* Search the array for a free slot above reserved: */
-       for (i = MessageQCopy_MAX_RESERVED_ENDPOINT + 1;
+       for (i = MessageQCopyS2S_MAX_RESERVED_ENDPOINT + 1;
                   (i < MAXENDPOINTS) && (found == FALSE) ; i++) {
-           if (MessageQCopy_lookupEndpnt(pool, i) == NULL) {
+           if (MessageQCopyS2S_lookupEndpnt(pool, i) == NULL) {
             queueIndex = i;
             found = TRUE;
             break;
            }
        }
     }
-    else if ((queueIndex = reserved) <= MessageQCopy_MAX_RESERVED_ENDPOINT) {
-       if (MessageQCopy_lookupEndpnt(pool, i) == NULL) {
+    else if ((queueIndex = reserved) <= MessageQCopyS2S_MAX_RESERVED_ENDPOINT) {
+       if (MessageQCopyS2S_lookupEndpnt(pool, i) == NULL) {
            found = TRUE;
        }
     }
 
     if (found)  {
-       obj = Memory_alloc(NULL, sizeof(MessageQCopy_Object), 0, NULL);
+       obj = Memory_alloc(NULL, sizeof(MessageQCopyS2S_Object), 0, NULL);
        if (obj != NULL) {
            /* Allocate a semaphore to signal when messages received: */
            obj->semHandle = Semaphore_create(0, NULL, NULL);
@@ -365,9 +365,9 @@ MessageQCopy_Handle MessageQCopy_rawCreate(MessageQCopy_EndptPool* pool, UInt32 
 
            /* Store our endpoint, and object: */
            obj->queueId = queueIndex;
-           MessageQCopy_assignEndpnt(pool, queueIndex, obj);
+           MessageQCopyS2S_assignEndpnt(pool, queueIndex, obj);
 
-           /* See MessageQCopy_unblock() */
+           /* See MessageQCopyS2S_unblock() */
            obj->unblocked = FALSE;
 
            *endpoint    = queueIndex;
@@ -384,13 +384,13 @@ MessageQCopy_Handle MessageQCopy_rawCreate(MessageQCopy_EndptPool* pool, UInt32 
 #undef FXNN
 
 /*
- *  ======== MessageQCopy_delete ========
+ *  ======== MessageQCopyS2S_delete ========
  */
-#define FXNN "MessageQCopy_delete"
-Int MessageQCopy_delete(MessageQCopy_Handle *handlePtr)
+#define FXNN "MessageQCopyS2S_delete"
+Int MessageQCopyS2S_delete(MessageQCopyS2S_Handle *handlePtr)
 {
-    Int                    status = MessageQCopy_S_SUCCESS;
-    MessageQCopy_Object    *obj;
+    Int                    status = MessageQCopyS2S_S_SUCCESS;
+    MessageQCopyS2S_Object    *obj;
     Queue_elem             *payload;
     IArg                   key;
 
@@ -398,11 +398,11 @@ Int MessageQCopy_delete(MessageQCopy_Handle *handlePtr)
 
     Assert_isTrue((curInit > 0) , NULL);
 
-    if (handlePtr && (obj = (MessageQCopy_Object *)(*handlePtr)))  {
+    if (handlePtr && (obj = (MessageQCopyS2S_Object *)(*handlePtr)))  {
 
        /* Null out our slot in the endpoint pool. */
        key = GateSwi_enter(module.gateSwi);
-       MessageQCopy_assignEndpnt(obj->pool, obj->queueId, NULL);
+       MessageQCopyS2S_assignEndpnt(obj->pool, obj->queueId, NULL);
        obj->pool = NULL;
        GateSwi_leave(module.gateSwi, key);
 
@@ -419,7 +419,7 @@ Int MessageQCopy_delete(MessageQCopy_Handle *handlePtr)
                         (IArg)obj->queueId);
 
        /* Now free the obj */
-       Memory_free(NULL, obj, sizeof(MessageQCopy_Object));
+       Memory_free(NULL, obj, sizeof(MessageQCopyS2S_Object));
 
        *handlePtr = NULL;
     }
@@ -430,14 +430,14 @@ Int MessageQCopy_delete(MessageQCopy_Handle *handlePtr)
 #undef FXNN
 
 /*
- *  ======== MessageQCopy_recv ========
+ *  ======== MessageQCopyS2S_recv ========
  */
-#define FXNN "MessageQCopy_recv"
-Int MessageQCopy_recv(MessageQCopy_Handle handle, Ptr data, UInt16 *len,
+#define FXNN "MessageQCopyS2S_recv"
+Int MessageQCopyS2S_recv(MessageQCopyS2S_Handle handle, Ptr data, UInt16 *len,
                       UInt32 *rplyEndpt, UInt timeout)
 {
-    Int                 status = MessageQCopy_S_SUCCESS;
-    MessageQCopy_Object *obj = (MessageQCopy_Object *)handle;
+    Int                 status = MessageQCopyS2S_S_SUCCESS;
+    MessageQCopyS2S_Object *obj = (MessageQCopyS2S_Object *)handle;
     Bool                semStatus;
     Queue_elem          *payload;
 
@@ -454,21 +454,21 @@ Int MessageQCopy_recv(MessageQCopy_Handle handle, Ptr data, UInt16 *len,
     semStatus = Semaphore_pend(obj->semHandle, timeout);
 
     if (semStatus == FALSE)  {
-       status = MessageQCopy_E_TIMEOUT;
+       status = MessageQCopyS2S_E_TIMEOUT;
        Log_print0(Diags_STATUS, FXNN": Sem pend timeout!");
     }
     else if (obj->unblocked) {
-       status = MessageQCopy_E_UNBLOCKED;
+       status = MessageQCopyS2S_E_UNBLOCKED;
     }
     else  {
        payload = (Queue_elem *)List_get(obj->queue);
 
        if (!payload) {
-           System_abort("MessageQCopy_recv: got a NULL payload\n");
+           System_abort("MessageQCopyS2S_recv: got a NULL payload\n");
        }
     }
 
-    if (status == MessageQCopy_S_SUCCESS)  {
+    if (status == MessageQCopyS2S_S_SUCCESS)  {
        /* Now, copy payload to client and free our internal msg */
        memcpy(data, payload->data, payload->len);
        *len = payload->len;
@@ -485,36 +485,36 @@ Int MessageQCopy_recv(MessageQCopy_Handle handle, Ptr data, UInt16 *len,
 
 
 /*
- *  ======== MessageQCopy_send ========
+ *  ======== MessageQCopyS2S_send ========
  */
-Int MessageQCopy_send(UInt16 procid, UInt32 dstEndpt, UInt32 srcEndpt,
+Int MessageQCopyS2S_send(UInt16 procid, UInt32 dstEndpt, UInt32 srcEndpt,
                       Ptr data, UInt16 len)
 {
 	UInt32 vqid;
 
 	if(procid >= MAXREMOTEPROCS)
-		return MessageQCopy_E_FAIL;
+		return MessageQCopyS2S_E_FAIL;
 
 	vqid = module.primaryVQs[procid];
-	return MessageQCopy_rawSend(vqid, dstEndpt, srcEndpt, data, len);
+	return MessageQCopyS2S_rawSend(vqid, dstEndpt, srcEndpt, data, len);
 }
 
 
 /*
- *  ======== MessageQCopy_rawSend ========
+ *  ======== MessageQCopyS2S_rawSend ========
  */
-#define FXNN "MessageQCopy_rawSend"
-Int MessageQCopy_rawSend(UInt32 vqid,
+#define FXNN "MessageQCopyS2S_rawSend"
+Int MessageQCopyS2S_rawSend(UInt32 vqid,
                       UInt32 dstEndpt,
                       UInt32 srcEndpt,
                       Ptr    data,
                       UInt16 len)
 {
-    Int               status = MessageQCopy_S_SUCCESS;
-    MessageQCopy_Object   *obj;
+    Int               status = MessageQCopyS2S_S_SUCCESS;
+    MessageQCopyS2S_Object   *obj;
     Int16             token = 0;
-    VirtQueue_Handle vq;
-    MessageQCopy_Msg  msg;
+    VirtQueueS2S_Handle vq;
+    MessageQCopyS2S_Msg  msg;
     IArg              key;
     int length;
 
@@ -527,8 +527,8 @@ Int MessageQCopy_rawSend(UInt32 vqid,
     if (dstProc != MultiProc_self()) {
         /* Send to remote processor: */
         key = GateSwi_enter(module.gateSwi);  // Protect vring structs.
-		vq = VirtQueue_get(swiData->vqid);
-        token = VirtQueue_getAvailBuf(vq,
+		vq = VirtQueueS2S_get(swiData->vqid);
+        token = VirtQueueS2S_getAvailBuf(vq,
                                       (Void **)&msg);
         GateSwi_leave(module.gateSwi, key);
 
@@ -542,16 +542,16 @@ Int MessageQCopy_rawSend(UInt32 vqid,
             msg->reserved = 0;
 
             key = GateSwi_enter(module.gateSwi);  // Protect vring structs.
-            VirtQueue_addUsedBuf(vq, token);
-            VirtQueue_kick(vq);
+            VirtQueueS2S_addUsedBuf(vq, token);
+            VirtQueueS2S_kick(vq);
             GateSwi_leave(module.gateSwi, key);
 		} else {
-            status = MessageQCopy_E_FAIL;
+            status = MessageQCopyS2S_E_FAIL;
             Log_print0(Diags_STATUS, FXNN": getAvailBuf failed!");
         }
     } else {
 		/* try to enque msg */
-			return MessageQCopy_E_FAIL;
+			return MessageQCopyS2S_E_FAIL;
 	}
 
     Log_print1(Diags_EXIT, "<-- "FXNN": %d", (IArg)status);
@@ -561,26 +561,26 @@ Int MessageQCopy_rawSend(UInt32 vqid,
 
 
 /*
- *  ======== MessageQCopy_enqueMsg ========
+ *  ======== MessageQCopyS2S_enqueMsg ========
  */
-#define FXNN "MessageQCopy_send"
-Int MessageQCopy_enqueMsg(MessageQCopy_EndptPool *pool, MessageQCopy_Msg msg)
+#define FXNN "MessageQCopyS2S_send"
+Int MessageQCopyS2S_enqueMsg(MessageQCopyS2S_EndptPool *pool, MessageQCopyS2S_Msg msg)
 {
-    Int               status = MessageQCopy_S_SUCCESS;
+    Int               status = MessageQCopyS2S_S_SUCCESS;
 	IArg              key;
-    MessageQCopy_Object msgq;
+    MessageQCopyS2S_Object msgq;
     UInt              size;
     Queue_elem        *payload;
 
-	/* Protect from MessageQCopy_delete */
+	/* Protect from MessageQCopyS2S_delete */
 	key = GateSwi_enter(module.gateSwi);
-	msgq = MessageQCopy_lookupEndpnt(pool, msg->dstAddr);
+	msgq = MessageQCopyS2S_lookupEndpnt(pool, msg->dstAddr);
 	GateSwi_leave(module.gateSwi, key);
 
 	if (msgq == NULL) {
 		Log_print1(Diags_STATUS, FXNN": no object for endpoint: %d",
 			   (IArg)(msg->dstEndpt));
-		status = MessageQCopy_E_NOENDPT;
+		status = MessageQCopyS2S_E_NOENDPT;
 		return status;
 	}
 
@@ -602,7 +602,7 @@ Int MessageQCopy_enqueMsg(MessageQCopy_EndptPool *pool, MessageQCopy_Msg msg)
 		Semaphore_post(msgq->semHandle);
 	}
 	else {
-		status = MessageQCopy_E_MEMORY;
+		status = MessageQCopyS2S_E_MEMORY;
 		Log_print0(Diags_STATUS, FXNN": HeapBuf_alloc failed!");
 	}
 
@@ -611,12 +611,12 @@ Int MessageQCopy_enqueMsg(MessageQCopy_EndptPool *pool, MessageQCopy_Msg msg)
 
 
 /*
- *  ======== MessageQCopy_unblock ========
+ *  ======== MessageQCopyS2S_unblock ========
  */
-#define FXNN "MessageQCopy_unblock"
-Void MessageQCopy_unblock(MessageQCopy_Handle handle)
+#define FXNN "MessageQCopyS2S_unblock"
+Void MessageQCopyS2S_unblock(MessageQCopyS2S_Handle handle)
 {
-    MessageQCopy_Object *obj = (MessageQCopy_Object *)handle;
+    MessageQCopyS2S_Object *obj = (MessageQCopyS2S_Object *)handle;
 
     Log_print1(Diags_ENTRY, "--> "FXNN": (handle=0x%x)", (IArg)handle);
 

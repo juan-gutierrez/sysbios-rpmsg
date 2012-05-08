@@ -498,7 +498,7 @@ Void VirtQueue_startup()
     /* Initilize the IpcPower module */
     IpcPower_init();
 
-    InterruptProxy_intRegister(VirtQueue_isr);
+    InterruptProxy_intRegister(0, VirtQueue_isr);
 }
 
 /*!

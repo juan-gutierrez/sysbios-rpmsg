@@ -35,11 +35,11 @@
  *  @brief      Virtio Queue implementation for BIOS
  *
  *  Differences between BIOS version and Linux kernel (include/linux/virtio.h):
- *  - Renamed module from virtio.h to VirtQueue_Object.h to match the API prefixes;
+ *  - Renamed module from virtio.h to VirtQueueS2S_Object.h to match the API prefixes;
  *  - BIOS (XDC) types and CamelCasing used;
  *  - virtio_device concept removed (i.e, assumes no containing device);
  *  - simplified scatterlist from Linux version;
- *  - VirtQueue_Objects are created statically here, so just added a VirtQueue_Object_init()
+ *  - VirtQueueS2S_Objects are created statically here, so just added a VirtQueueS2S_Object_init()
  *    fxn to take the place of the Virtio vring_new_virtqueue() API;
  *  - The notify function is implicit in the implementation, and not provided
  *    by the client, as it is in Linux virtio.
@@ -67,7 +67,7 @@
 #include <ti/sysbios/hal/Cache.h>
 
 #include <ti/ipc/rpmsg/InterruptProxy.h>
-#include <ti/ipc/rpmsg/VirtQueue_s2s.h>
+#include <ti/ipc/rpmsg/VirtQueueS2S_s2s.h>
 #include <ti/ipc/MultiProc.h>
 
 #include <ti/resources/IpcMemory.h>
@@ -123,36 +123,27 @@
  *
  * @RP_MBOX_ABORT_REQUEST:  tells the M3 to crash on demand
  */
-enum {
-    RP_MSG_MBOX_READY           = (Int)0xFFFFFF00,
-    RP_MSG_MBOX_STATE_CHANGE    = (Int)0xFFFFFF01,
-    RP_MSG_MBOX_CRASH           = (Int)0xFFFFFF02,
-    RP_MBOX_ECHO_REQUEST        = (Int)0xFFFFFF03,
-    RP_MBOX_ECHO_REPLY          = (Int)0xFFFFFF04,
-    RP_MBOX_ABORT_REQUEST       = (Int)0xFFFFFF05,
-    RP_MSG_FLUSH_CACHE          = (Int)0xFFFFFF06,
-    RP_MSG_HIBERNATION          = (Int)0xFFFFFF07
-};
 
-#define DIV_ROUND_UP(n,d)   (((n) + (d) - 1) / (d))
-#define RP_MSG_NUM_BUFS     (VQ0_SIZE) /* must be power of two */
+
+//#define DIV_ROUND_UP(n,d)   (((n) + (d) - 1) / (d))
+//#define RP_MSG_NUM_BUFS     (VQ0_SIZE) /* must be power of two */
 #define RP_MSG_BUF_SIZE     (512)
-#define RP_MSG_BUFS_SPACE   (RP_MSG_NUM_BUFS * RP_MSG_BUF_SIZE * 2)
+//#define RP_MSG_BUFS_SPACE   (RP_MSG_NUM_BUFS * RP_MSG_BUF_SIZE * 2)
 
-#define PAGE_SIZE           (4096)
+//#define PAGE_SIZE           (4096)
 /*
  * The alignment to use between consumer and producer parts of vring.
  * Note: this is part of the "wire" protocol. If you change this, you need
  * to update your BIOS image as well
  */
-#define RP_MSG_VRING_ALIGN  (4096)
+//#define RP_MSG_VRING_ALIGN  (4096)
 
 /* With 256 buffers, our vring will occupy 3 pages */
-#define RP_MSG_RING_SIZE    ((DIV_ROUND_UP(vring_size(RP_MSG_NUM_BUFS, \
-                            RP_MSG_VRING_ALIGN), PAGE_SIZE)) * PAGE_SIZE)
+//#define RP_MSG_RING_SIZE    ((DIV_ROUND_UP(vring_size(RP_MSG_NUM_BUFS, \
+//                            RP_MSG_VRING_ALIGN), PAGE_SIZE)) * PAGE_SIZE)
 
 /* The total IPC space needed to communicate with a remote processor */
-#define RPMSG_IPC_MEM   (RP_MSG_BUFS_SPACE + 2 * RP_MSG_RING_SIZE)
+//#define RPMSG_IPC_MEM   (RP_MSG_BUFS_SPACE + 2 * RP_MSG_RING_SIZE)
 
 #define ID_SYSM3_TO_A9      0
 #define ID_A9_TO_SYSM3      1
@@ -169,20 +160,20 @@ enum {
 #define ID_APPM3_TO_A9      200
 #define ID_A9_TO_APPM3      201
 
-typedef struct VirtQueue_Object {
-    /* Id for this VirtQueue_Object */
+typedef struct VirtQueueS2S_Object {
+    /* Id for this VirtQueueS2S_Object */
     UInt16                  id;
 
     /* The function to call when buffers are consumed (can be NULL) */
-    VirtQueue_callback      callback;
+    VirtQueueS2S_callback      callback;
 
     /* Shared state */
     struct vring            vring;
 
-    /* Last available index; updated by VirtQueue_getAvailBuf */
+    /* Last available index; updated by VirtQueueS2S_getAvailBuf */
     UInt16                  last_avail_idx;
 
-    /* Last available index; updated by VirtQueue_addUsedBuf */
+    /* Last available index; updated by VirtQueueS2S_addUsedBuf */
     UInt16                  last_used_idx;
 
     /* Will eventually be used to kick remote processor */
@@ -194,10 +185,10 @@ typedef struct VirtQueue_Object {
     UInt8*					status;
 
 	/* Indicates TX or RX direction */
-    VirtQueue_dir			direction;
-} VirtQueue_Object;
+    VirtQueueS2S_dir			direction;
+} VirtQueueS2S_Object;
 
-static struct VirtQueue_Object *queueRegistry[MAX_VIRTQUEUES];
+static struct VirtQueueS2S_Object *queueRegistry[MAX_VIRTQUEUES];
 
 
 static inline Void * mapPAtoVA(UInt pa)
@@ -218,25 +209,25 @@ static inline UInt mapVAtoPA(Void * va)
 }
 
 /*!
- * ======== VirtQueue_kick ========
+ * ======== VirtQueueS2S_kick ========
  */
-Void VirtQueue_kick(VirtQueue_Handle vq)
+Void VirtQueueS2S_kick(VirtQueueS2S_Handle vq)
 {
     /* For now, simply interrupt remote processor */
     if (vq->vring.avail->flags & VRING_AVAIL_F_NO_INTERRUPT) {
         Log_print0(Diags_USER1,
-                "VirtQueue_kick: no kick because of VRING_AVAIL_F_NO_INTERRUPT\n");
+                "VirtQueueS2S_kick: no kick because of VRING_AVAIL_F_NO_INTERRUPT\n");
         return;
     }
 
     Log_print2(Diags_USER1,
-            "VirtQueue_kick: Sending interrupt to proc %d with payload 0x%x\n",
+            "VirtQueueS2S_kick: Sending interrupt to proc %d with payload 0x%x\n",
             (IArg)vq->procId, (IArg)vq->id);
     InterruptProxy_intSend(vq->procId, vq->id);
 }
 
 
-Void VirtQueue_dump(VirtQueue_Handle vq)
+Void VirtQueueS2S_dump(VirtQueueS2S_Handle vq)
 {
 	System_printf("id %d: kick proc %d, last_avail_idx %d, last_used_idx %d, avail->idx %d, used->idx %d\n",
 	vq->id, vq->procId, vq->last_avail_idx, vq->last_used_idx, vq->vring.avail->idx, vq->vring.used->idx);
@@ -244,9 +235,9 @@ Void VirtQueue_dump(VirtQueue_Handle vq)
 
 
 /*!
- * ======== VirtQueue_addUsedBuf ========
+ * ======== VirtQueueS2S_addUsedBuf ========
  */
-Int VirtQueue_addUsedBuf(VirtQueue_Handle vq, Int16 head, int len)
+Int VirtQueueS2S_addUsedBuf(VirtQueueS2S_Handle vq, Int16 head, int len)
 {
     struct vring_used_elem *used;
 
@@ -269,9 +260,9 @@ Int VirtQueue_addUsedBuf(VirtQueue_Handle vq, Int16 head, int len)
 
 
 /*!
- * ======== VirtQueue_addAvailBuf ========
+ * ======== VirtQueueS2S_addAvailBuf ========
  */
-Void VirtQueue_addAvailBuf(VirtQueue_Object *vq, Void *buf)
+Void VirtQueueS2S_addAvailBuf(VirtQueueS2S_Object *vq, Void *buf)
 {
     UInt16 avail;
 
@@ -286,9 +277,9 @@ Void VirtQueue_addAvailBuf(VirtQueue_Object *vq, Void *buf)
 
 
 /*!
- * ======== VirtQueue_getUsedBuf ========
+ * ======== VirtQueueS2S_getUsedBuf ========
  */
-Void *VirtQueue_getUsedBuf(VirtQueue_Object *vq)
+Void *VirtQueueS2S_getUsedBuf(VirtQueueS2S_Object *vq)
 {
     UInt16 head;
     Void *buf;
@@ -308,9 +299,9 @@ Void *VirtQueue_getUsedBuf(VirtQueue_Object *vq)
 
 
 /*!
- * ======== VirtQueue_getAvailBuf ========
+ * ======== VirtQueueS2S_getAvailBuf ========
  */
-Int16 VirtQueue_getAvailBuf(VirtQueue_Handle vq, Void **buf, int *len)
+Int16 VirtQueueS2S_getAvailBuf(VirtQueueS2S_Handle vq, Void **buf, int *len)
 {
     UInt16 head;
 
@@ -344,20 +335,20 @@ Int16 VirtQueue_getAvailBuf(VirtQueue_Handle vq, Void **buf, int *len)
 
 
 /*!
- * ======== VirtQueue_disableCallback ========
+ * ======== VirtQueueS2S_disableCallback ========
  */
-Void VirtQueue_disableCallback(VirtQueue_Object *vq)
+Void VirtQueueS2S_disableCallback(VirtQueueS2S_Object *vq)
 {
-    Log_print0(Diags_USER1, "VirtQueue_disableCallback called.");
+    Log_print0(Diags_USER1, "VirtQueueS2S_disableCallback called.");
 }
 
 
 /*!
- * ======== VirtQueue_enableCallback ========
+ * ======== VirtQueueS2S_enableCallback ========
  */
-Bool VirtQueue_enableCallback(VirtQueue_Object *vq)
+Bool VirtQueueS2S_enableCallback(VirtQueueS2S_Object *vq)
 {
-    Log_print0(Diags_USER1, "VirtQueue_enableCallback called.");
+    Log_print0(Diags_USER1, "VirtQueueS2S_enableCallback called.");
 
     //TODO
     return (FALSE);
@@ -365,77 +356,30 @@ Bool VirtQueue_enableCallback(VirtQueue_Object *vq)
 
 
 /*!
- * ======== VirtQueue_isr ========
+ * ======== VirtQueueS2S_isr ========
  * Note 'arg' is ignored: it is the Hwi argument, not the mailbox argument.
  */
-Void VirtQueue_isr(UArg msg)
+Void VirtQueueS2S_isr(UArg msg)
 {
-    VirtQueue_Object *vq;
+    VirtQueueS2S_Object *vq;
 
-    Log_print1(Diags_USER1, "VirtQueue_isr received msg = 0x%x\n", msg);
+    Log_print1(Diags_USER1, "VirtQueueS2S_isr received msg = 0x%x\n", msg);
 
-    if (MultiProc_self() == sysm3procId || MultiProc_self() == dspprocId) {
-        switch(msg) {
-            case (UInt)RP_MSG_MBOX_READY:
-                return;
-
-            case (UInt)RP_MBOX_ECHO_REQUEST:
-                InterruptProxy_intSend(hostprocId, (UInt)(RP_MBOX_ECHO_REPLY));
-                return;
-
-            case (UInt)RP_MBOX_ABORT_REQUEST:
-                {
-                    Fxn f = (Fxn)0x0;
-                    Log_print0(Diags_USER1, "Crash on demand ...\n");
-                    f();
-                }
-                return;
-
-            case (UInt)RP_MSG_FLUSH_CACHE:
-                Cache_wbAll();
-                return;
-
-            case (UInt)RP_MSG_HIBERNATION:
-                /* Notify Core1 */
-                InterruptProxy_intSend(appm3procId, (UInt)(RP_MSG_HIBERNATION));
-                IpcPower_suspend();
-                return;
-
-            default:
-                /*
-                 *  If the message isn't one of the above, it's either part of the
-                 *  2-message synchronization sequence or it a virtqueue message
-                 */
-                break;
-        }
-    }
-    else if (msg & 0xFFFF0000) {
-        if (msg == (UInt)RP_MSG_HIBERNATION) {
-            IpcPower_suspend();
-        }
-        return;
-    }
-
-    if (MultiProc_self() == sysm3procId && (msg == ID_A9_TO_APPM3 || msg == ID_APPM3_TO_A9)) {
-        InterruptProxy_intSend(appm3procId, (UInt)msg);
-    }
-    else {
-        vq = queueRegistry[msg];
-        if (vq) {
-            vq->callback(vq);
-        }
-    }
+	vq = queueRegistry[msg];
+	if (vq) {
+		vq->callback(vq);
+	}
 }
 
 
 /*!
- * ======== VirtQueue_create ========
+ * ======== VirtQueueS2S_create ========
  */
-VirtQueue_Object *VirtQueue_create(UInt32 vqId, UInt32 remoteprocId,
-	VirtQueue_callback callback, Vring_params *params,
-	VirtQueue_dir direction, UInt8 *status_addr)
+VirtQueueS2S_Object *VirtQueueS2S_create(UInt32 vqId, UInt32 remoteprocId,
+	VirtQueueS2S_callback callback, Vring_params *params,
+	VirtQueueS2S_dir direction, UInt8 *status_addr)
 {
-    VirtQueue_Object *vq;
+    VirtQueueS2S_Object *vq;
     void *vring_phys;
     Error_Block eb;
 
@@ -449,7 +393,7 @@ VirtQueue_Object *VirtQueue_create(UInt32 vqId, UInt32 remoteprocId,
 	}
 
     Error_init(&eb);
-    vq = Memory_alloc(NULL, sizeof(VirtQueue_Object), 0, &eb);
+    vq = Memory_alloc(NULL, sizeof(VirtQueueS2S_Object), 0, &eb);
     if (!vq) {
         return (NULL);
     }
@@ -469,7 +413,7 @@ VirtQueue_Object *VirtQueue_create(UInt32 vqId, UInt32 remoteprocId,
     vring_init(&(vq->vring), params->num, params->addr, params->align);
 
 	/* Each processor clears only its TX vq memory. */
-    if(direction = VirtQueue_TX) {
+    if(direction = VirtQueueS2S_TX) {
 		memset(params->addr, 0, vring_size(params->num, params->align));
 		/* Don't trigger a mailbox message every time remote rpoc */
 		/* makes another buffer available.                        */
@@ -485,24 +429,24 @@ VirtQueue_Object *VirtQueue_create(UInt32 vqId, UInt32 remoteprocId,
 		///* set up the receive buffers */
         //for (i = 0; i < RP_MSG_NUM_BUFS; i++) {
             //buf = (void*) ((UInt)buf_addr + i * RP_MSG_BUF_SIZE);
-            //VirtQueue_addAvailBuf(vq, buf);
+            //VirtQueueS2S_addAvailBuf(vq, buf);
         //}
     //}
 
     queueRegistry[vqId] = vq;
 
-    InterruptProxy_intRegister(remoteprocId, VirtQueue_isr, remoteprocId);
+    InterruptProxy_intRegister(remoteprocId, VirtQueueS2S_isr, remoteprocId);
 
     return (vq);
 }
 
 
 /*!
- * ======== VirtQueue_get ========
+ * ======== VirtQueueS2S_get ========
  */
-VirtQueue_Object *VirtQueue_get(UInt32 vqid)
+VirtQueueS2S_Object *VirtQueueS2S_get(UInt32 vqid)
 {
-    VirtQueue_Object *vq = NULL;
+    VirtQueueS2S_Object *vq = NULL;
 
 	if(vqid < MAX_VIRTQUEUES)
 		vq = queueRegistry[vqId];
@@ -512,12 +456,12 @@ VirtQueue_Object *VirtQueue_get(UInt32 vqid)
 
 
 /*!
- * ======== VirtQueue_setCallback ========
+ * ======== VirtQueueS2S_setCallback ========
  */
-Int VirtQueue_setCallback(UInt32 vqid, VirtQueue_callback callback, UArg data)
+Int VirtQueueS2S_setCallback(UInt32 vqid, VirtQueueS2S_callback callback, UArg data)
 {
     Int status = 1;
-    VirtQueue_Object *vq = VirtQueue_get(UInt32 vqid);
+    VirtQueueS2S_Object *vq = VirtQueueS2S_get(UInt32 vqid);
 
 	if(vq) {
 		vq->callback = callback;
@@ -528,7 +472,7 @@ Int VirtQueue_setCallback(UInt32 vqid, VirtQueue_callback callback, UArg data)
 }
 
 
-Void VirtQueue_prime(VirtQueue_Object *vq, UInt16 remoteprocId, int vqid)
+Void VirtQueueS2S_prime(VirtQueueS2S_Object *vq, UInt16 remoteprocId, int vqid)
 {
 	/* fill the Available ring with buffers */
 }
@@ -588,7 +532,7 @@ Int VirtioIPC_init(Void *shared_page)
 	struct fw_rsc_vdev_vring *tx_vr, *rx_vr;
 	struct fw_rsc_devmem2 *dm;
 	Vring_params params;
-	VirtQueue_Handle tx_vq, rx_vq;
+	VirtQueueS2S_Handle tx_vq, rx_vq;
 	UInt8 *tx_status, *rx_status;
 	UInt32 procId;
 	UInt32 num_vd, vd_cnt;
@@ -627,8 +571,8 @@ Int VirtioIPC_init(Void *shared_page)
 			params.num = tx_vr->num;
 			params.addr = tx_vr->da;
 			params.align = tx_vr->align;
-			tx_vq = VirtQueue_Object *VirtQueue_create(tx_vr->notify_id, procId,
-					NULL, &params, VirtQueue_TX, tx_status);
+			tx_vq = VirtQueueS2S_Object *VirtQueueS2S_create(tx_vr->notify_id, procId,
+					NULL, &params, VirtQueueS2S_TX, tx_status);
 
 			if(tx_vq == NULL)
 				Error_raise(NULL, Error_E_generic, "VirtQueue creation failure: %d", tx_vr->notify_id);
@@ -636,8 +580,8 @@ Int VirtioIPC_init(Void *shared_page)
 			params.num = rx_vr->num;
 			params.addr = rx_vr->da;
 			params.align = rx_vr->align;
-			rx_vq = VirtQueue_Object *VirtQueue_create(rx_vr->notify_id, procId,
-					NULL, &params, VirtQueue_RX, rx_status);
+			rx_vq = VirtQueueS2S_Object *VirtQueueS2S_create(rx_vr->notify_id, procId,
+					NULL, &params, VirtQueueS2S_RX, rx_status);
 
 			if(rx_vq == NULL)
 				Error_raise(NULL, Error_E_generic, "VirtQueue creation failure: %d", rx_vr->notify_id);
@@ -664,11 +608,11 @@ Int VirtioIPC_init(Void *shared_page)
 
 
 /*!
- * ======== VirtQueue_startup ========
+ * ======== VirtQueueS2S_startup ========
  */
-Void VirtQueue_startup()
+Void VirtQueueS2S_startup()
 {
-	/* InterruptProxy_intRegister moved to VirtQueue_create() */
+	/* InterruptProxy_intRegister moved to VirtQueueS2S_create() */
 }
 
 
