@@ -141,10 +141,10 @@ Void InterruptM3_intEnable(UInt16 remoteProcId)
      *  share the same Hwi
      */
 	if (remoteProcId == MultiProc_getId("HOST")) {
-		REG32(MAILBOX_IRQENABLE_SET_IPU) = 0x100;
+		REG32(MAILBOX_IRQENABLE_SET_IPU) = MAILBOX_REG_VAL(HOST_TO_IPU_MBX);
 	}
 	else if (remoteProcId == MultiProc_getId("DSP")) {
-		REG32(MAILBOX_IRQENABLE_SET_IPU) = 0x4;
+		REG32(MAILBOX_IRQENABLE_SET_IPU) = MAILBOX_REG_VAL(DSP_TO_IPU_MBX);
 	}
 }
 
@@ -160,10 +160,10 @@ Void InterruptM3_intDisable(UInt16 remoteProcId)
      *  share the same Hwi
      */
 	if (remoteProcId == MultiProc_getId("HOST")) {
-		REG32(MAILBOX_IRQENABLE_CLR_IPU) = 0x100;
+		REG32(MAILBOX_IRQENABLE_CLR_IPU) = MAILBOX_REG_VAL(HOST_TO_IPU_MBX);
 	}
 	else if (remoteProcId == MultiProc_getId("DSP")) {
-		REG32(MAILBOX_IRQENABLE_CLR_IPU) = 0x4;
+		REG32(MAILBOX_IRQENABLE_CLR_IPU) = MAILBOX_REG_VAL(DSP_TO_IPU_MBX);
 	}
 }
 
@@ -292,10 +292,10 @@ UInt InterruptM3_intClear(UInt16 remoteProcId)
 
     if(remoteProcId == MultiProc_getId("HOST")) {
 		arg = REG32(MAILBOX_MESSAGE(HOST_TO_IPU_MBX));
-		REG32(MAILBOX_IRQSTATUS_CLR_IPU) = 0x100; /* Mbx 4 */
+		REG32(MAILBOX_IRQSTATUS_CLR_IPU) = MAILBOX_REG_VAL(HOST_TO_IPU_MBX);
 	} else if (remoteProcId == MultiProc_getId("DSP")) {
 		arg = REG32(MAILBOX_MESSAGE(DSP_TO_IPU_MBX));
-		REG32(MAILBOX_IRQSTATUS_CLR_IPU) = 0x4; /* Mbx 1 */
+		REG32(MAILBOX_IRQSTATUS_CLR_IPU) = MAILBOX_REG_VAL(DSP_TO_IPU_MBX);
     } else {
         Error_raise(NULL, Error_E_generic, "Invalid remote processor: %d", remoteProcId);
 	}
@@ -318,18 +318,18 @@ Void InterruptM3_intShmMbxStub(UArg arg)
     UInt msg;
 
     /* Process messages from the DSP  */
-    if ((REG32(MAILBOX_IRQENABLE_SET_IPU) & 0x4) &&
+    if ((REG32(MAILBOX_IRQENABLE_SET_IPU) & MAILBOX_REG_VAL(DSP_TO_IPU_MBX)) &&
 			REG32(MAILBOX_STATUS(DSP_TO_IPU_MBX)) != 0) {
-		msg = REG32(MAILBOX_MESSAGE(HOST_TO_IPU_MBX));
-		REG32(MAILBOX_IRQSTATUS_CLR_IPU) = 0x100; /* Mbx 4 */
+		msg = REG32(MAILBOX_MESSAGE(DSP_TO_IPU_MBX));
+		REG32(MAILBOX_IRQSTATUS_CLR_IPU) = MAILBOX_REG_VAL(DSP_TO_IPU_MBX);
         (table[0].func)(msg, table[0].arg);
     }
 
     /* Process messages from the HOST  */
-    if ((REG32(MAILBOX_IRQENABLE_SET_IPU) & 0x100) &&
+    if ((REG32(MAILBOX_IRQENABLE_SET_IPU) & MAILBOX_REG_VAL(HOST_TO_IPU_MBX)) &&
 			REG32(MAILBOX_STATUS(HOST_TO_IPU_MBX)) != 0) {
 		msg = REG32(MAILBOX_MESSAGE(HOST_TO_IPU_MBX));
-		REG32(MAILBOX_IRQSTATUS_CLR_IPU) = 0x100; /* Mbx 4 */
+		REG32(MAILBOX_IRQSTATUS_CLR_IPU) = MAILBOX_REG_VAL(HOST_TO_IPU_MBX);
         (table[1].func)(msg, table[1].arg);
     }
 }

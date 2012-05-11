@@ -131,16 +131,16 @@
 
 struct resource_table resources = {
 	1, /* we're the first version that implements this */
-	13, /* number of entries in the table */
+	12, /* number of entries in the table */
 	0, 0, /* reserved, must be zero */
 	/* offsets to entries */
 	{
 		offsetof(struct resource_table, rpmsg_vdev),
 		offsetof(struct resource_table, console_vdev),
-		offsetof(struct resource_table, rpmsg_tesla_vdev),
 		offsetof(struct resource_table, data_cout),
 		offsetof(struct resource_table, heap_cout),
 		offsetof(struct resource_table, text_cout),
+		offsetof(struct resource_table, dsp_ipu_ipc),
 		offsetof(struct resource_table, trace),
 		offsetof(struct resource_table, devmem0),
 		offsetof(struct resource_table, devmem1),
@@ -170,37 +170,6 @@ struct resource_table resources = {
 	{ CONSOLE_VRING0_DA, 4096, CONSOLE_VQ0_SIZE, 4, 0 },
 	{ CONSOLE_VRING1_DA, 4096, CONSOLE_VQ1_SIZE, 5, 0 },
 
-	/* tesla-to-ducati rpmsg evdev entry */
-	{
-		TYPE_EVDEV, VIRTIO_ID_RPMSG,
-		0, /* tesla proc_id */
-		1, /* ducati proc_id */
-		0, /* notify id */
-		TESLA2DUCATI_RPMSG_FEATURES, /* tesla virtio features */
-		0, /* virtio features */
-		0, /* config len */
-		0, /* reserved */
-		0, /* tesla virtio status */
-		0, /* ducati virtio status */
-		2, /* number of vrings */
-		0, /* padding */
-	},
-
-	/* Tesla's TX vring */
-	{
-		0, /* tesla da */
-		0, /* pa */
-		0, /* ducati da */
-		4096, /* alignment */
-		RPMSG_VQ0_SIZE, /* number of buffers */
-		1, /* notify id */
-		EVDEV_MASTER_ALLOCATES_VRING, /* let the master allocate the vring for us */
-		0, /* reserved */
-	},
-
-	/* Ducati's TX vring */
-	{ 0, 0, 0, 0, 0, 2 /* notify id */, 0 ,0 }, /* (we don't know much about tesla's tx vring at this point */
-
 	{
 		TYPE_CARVEOUT, DATA_DA, 0, DATA_SIZE, 0, 0, "DSP_MEM_DATA",
 	},
@@ -214,7 +183,7 @@ struct resource_table resources = {
 	},
 
 	{
-		TYPE_CARVEOUT, MEM_INTERPROC, 0, PHYS_MEM_INTERPROC, 0, 0, "B2B_VRING",
+		TYPE_CARVEOUT, MEM_INTERPROC, PHYS_MEM_INTERPROC, SZ_2M, 0, 0, "DSP_IPU_VRING",
 	},
 
 	{

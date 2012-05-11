@@ -79,6 +79,7 @@ var Task          = xdc.useModule('ti.sysbios.knl.Task');
 Task.deleteTerminatedTasks = true;
 
 var Assert = xdc.useModule('xdc.runtime.Assert');
+var Error = xdc.useModule('xdc.runtime.Error');
 var Defaults = xdc.useModule('xdc.runtime.Defaults');
 var Diags = xdc.useModule('xdc.runtime.Diags');
 var LoggerSys = xdc.useModule('xdc.runtime.LoggerSys');

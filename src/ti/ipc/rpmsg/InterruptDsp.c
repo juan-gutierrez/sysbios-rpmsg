@@ -127,10 +127,10 @@ UInt InterruptProxy_intClear(UInt16 remoteProcId)
 Void InterruptDsp_intEnable(UInt16 remoteProcId)
 {
     if (remoteProcId == MultiProc_getId("HOST")) {
-        REG32(MAILBOX_IRQENABLE_SET_DSP) = 0x40;
+        REG32(MAILBOX_IRQENABLE_SET_DSP) = MAILBOX_REG_VAL(HOST_TO_DSP_MBX);
     }
     else if (remoteProcId == MultiProc_getId("CORE0")) {
-        REG32(MAILBOX_IRQENABLE_SET_DSP) = 0x10;
+        REG32(MAILBOX_IRQENABLE_SET_DSP) = MAILBOX_REG_VAL(IPU_TO_DSP_MBX);
     }
 }
 
@@ -141,10 +141,10 @@ Void InterruptDsp_intEnable(UInt16 remoteProcId)
 Void InterruptDsp_intDisable(UInt16 remoteProcId)
 {
     if (remoteProcId == MultiProc_getId("HOST")) {
-        REG32(MAILBOX_IRQENABLE_CLR_DSP) = 0x40;
+        REG32(MAILBOX_IRQENABLE_CLR_DSP) = MAILBOX_REG_VAL(HOST_TO_DSP_MBX);
     }
     else if (remoteProcId == MultiProc_getId("CORE0")) {
-        REG32(MAILBOX_IRQENABLE_CLR_DSP) = 0x10;
+        REG32(MAILBOX_IRQENABLE_CLR_DSP) = MAILBOX_REG_VAL(IPU_TO_DSP_MBX);
     }
 }
 
@@ -256,8 +256,8 @@ Void InterruptDsp_intSend(UInt16 remoteProcId,
     else if (remoteProcId == MultiProc_getId("CORE0")) {
         /* Using mailbox 1 */
         key = Hwi_disable();
-        if (REG32(MAILBOX_STATUS(DSP_TO_HOST_MBX)) == 0) {
-            REG32(MAILBOX_MESSAGE(DSP_TO_HOST_MBX)) = arg;
+        if (REG32(MAILBOX_STATUS(DSP_TO_IPU_MBX)) == 0) {
+            REG32(MAILBOX_MESSAGE(DSP_TO_IPU_MBX)) = arg;
         }
         Hwi_restore(key);
     }
@@ -278,12 +278,12 @@ UInt InterruptDsp_intClear(UInt16 remoteProcId)
     if (remoteProcId == MultiProc_getId("HOST")) {
         /* Mailbox 3 */
         arg = REG32(MAILBOX_MESSAGE(HOST_TO_DSP_MBX));
-        REG32(MAILBOX_IRQSTATUS_CLR_DSP) = 0x40;
+        REG32(MAILBOX_IRQSTATUS_CLR_DSP) = MAILBOX_REG_VAL(HOST_TO_DSP_MBX);
     }
     else if (remoteProcId == MultiProc_getId("CORE0")) {
         /* Mailbox 2 */
         arg = REG32(MAILBOX_MESSAGE(IPU_TO_DSP_MBX));
-        REG32(MAILBOX_IRQSTATUS_CLR_DSP) = 0x10;
+        REG32(MAILBOX_IRQSTATUS_CLR_DSP) = MAILBOX_REG_VAL(IPU_TO_DSP_MBX);
     }
     else {
         Error_raise(NULL, Error_E_generic, "Invalid remote processor: %d", remoteProcId);
@@ -307,18 +307,18 @@ Void InterruptDsp_intShmStub(UArg arg)
     UInt msg;
 
     /* Process messages from  HOST */
-    if ((REG32(MAILBOX_IRQENABLE_SET_DSP) & 0x40) &&
+    if ((REG32(MAILBOX_IRQENABLE_SET_DSP) & MAILBOX_REG_VAL(HOST_TO_DSP_MBX)) &&
 			REG32(MAILBOX_STATUS(HOST_TO_DSP_MBX)) != 0) {
         msg = REG32(MAILBOX_MESSAGE(HOST_TO_DSP_MBX));
-        REG32(MAILBOX_IRQSTATUS_CLR_DSP) = 0x40;
+        REG32(MAILBOX_IRQSTATUS_CLR_DSP) = MAILBOX_REG_VAL(HOST_TO_DSP_MBX);
         (table[0].func)(msg, table[0].arg);
     }
 
     /* Process messages from CORE0 */
-    if ((REG32(MAILBOX_IRQENABLE_SET_DSP) & 0x10) &&
+    if ((REG32(MAILBOX_IRQENABLE_SET_DSP) & MAILBOX_REG_VAL(IPU_TO_DSP_MBX)) &&
 			REG32(MAILBOX_STATUS(IPU_TO_DSP_MBX)) != 0) {
         msg = REG32(MAILBOX_MESSAGE(IPU_TO_DSP_MBX));
-        REG32(MAILBOX_IRQSTATUS_CLR_DSP) = 0x10;
+        REG32(MAILBOX_IRQSTATUS_CLR_DSP) = MAILBOX_REG_VAL(IPU_TO_DSP_MBX);
         (table[1].func)(msg, table[1].arg);
     }
 }

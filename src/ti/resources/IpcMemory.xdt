@@ -59,6 +59,8 @@ Void ti_resources_IpcMemory_init__I()
 %    MultiProc.id == MultiProc.getIdMeta("DSP")) {
     xdc_runtime_System_printf("%x IpcMemory entries at %x\n",
                               resources.num, resources);
+    xdc_runtime_System_printf("Shared page at %x, num entries %d\n",
+                              &shared_page, shared_page.page_header.num);
     printf("%x IpcMemory entries at %x\n", resources.num, resources);
 
 %}

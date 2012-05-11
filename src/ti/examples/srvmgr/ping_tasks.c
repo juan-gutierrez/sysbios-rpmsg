@@ -83,8 +83,6 @@ Void copyTaskFxn(UArg arg0, UArg arg1)
        buffer[len] = '\0';
        System_printf("copyTask %d: Received data: %s, len:%d\n", i + 1,
                       buffer, len);
-       printf("copyTask %d: Received data: %s, len:%d\n", i + 1,
-                      buffer, len);
 
        /* Send data back to remote endpoint: */
        MessageQCopy_send(dstProc, remoteEndpoint, myEndpoint, (Ptr)buffer, len);

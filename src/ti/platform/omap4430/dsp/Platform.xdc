@@ -43,9 +43,10 @@ metaonly module Platform inherits xdc.platform.IPlatform {
             deviceName:     "OMAP4430",
             externalMemoryMap: [
                 ["EXT_CODE",  {name: "EXT_CODE",  base: 0x20000000, len: 0x00080000, space: "code", access: "RWX"}],
-                ["EXT_DATA",  {name: "EXT_DATA",  base: 0x90000000, len: 0x00080000, space: "data", access: "RW"}],
+                ["EXT_DATA",  {name: "EXT_DATA",  base: 0x90000000, len: 0x00100000, space: "data", access: "RW"}],
                 ["EXT_HEAP",  {name: "EXT_HEAP",  base: 0x90100000, len: 0x00200000, space: "data", access: "RW"}],
                 ["PM_DATA",   {name: "PM_DATA",   base: 0x90300000, len: 0x00020000, space: "data", access: "RWX"}],
+                ["IPC_DATA",  {name: "IPC_DATA",  base: 0xa0100000, len: 0x00100000, space: "data", access: "RW"}],
             ],
     });
 

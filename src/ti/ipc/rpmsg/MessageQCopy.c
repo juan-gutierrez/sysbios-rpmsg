@@ -152,9 +152,12 @@ static Void MessageQCopy_swiFxn(UArg arg0, UArg arg1)
                                          (Void **)&msg, &len))
          >= 0) {
 
-        Log_print3(Diags_INFO, FXNN": \n\tReceived msg: from: 0x%x, "
-                   "to: 0x%x, dataLen: %d",
-                  (IArg)msg->srcAddr, (IArg)msg->dstAddr, (IArg)msg->dataLen);
+//        Log_print3(Diags_INFO, FXNN": \n\tReceived msg: from: 0x%x, "
+//                   "to: 0x%x, dataLen: %d",
+//                  (IArg)msg->srcAddr, (IArg)msg->dstAddr, (IArg)msg->dataLen);
+//        System_printf( FXNN": Received msg: from: 0x%x, "
+//                   "to: 0x%x, dataLen: %d",
+//                  (IArg)msg->srcAddr, (IArg)msg->dstAddr, (IArg)msg->dataLen);
 
         /* Pass to desitination queue (which is on this proc): */
         MessageQCopy_send(dstProc, msg->dstAddr, msg->srcAddr,
@@ -468,6 +471,9 @@ Int MessageQCopy_send(UInt16 dstProc,
 
     Log_print5(Diags_ENTRY, "--> "FXNN": (dstProc=%d, dstEndpt=%d, "
                "srcEndpt=%d, data=0x%x, len=%d", (IArg)dstProc, (IArg)dstEndpt,
+               (IArg)srcEndpt, (IArg)data, (IArg)len);
+    System_printf("--> "FXNN": (dstProc=%d, dstEndpt=%d, "
+               "srcEndpt=%d, data=0x%x, len=%d\n", (IArg)dstProc, (IArg)dstEndpt,
                (IArg)srcEndpt, (IArg)data, (IArg)len);
 
     Assert_isTrue((curInit > 0) , NULL);

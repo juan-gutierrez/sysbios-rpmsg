@@ -56,6 +56,7 @@
 #include <xdc/std.h>
 #include <xdc/runtime/System.h>
 #include <xdc/runtime/Error.h>
+#include <xdc/runtime/Assert.h>
 #include <xdc/runtime/Memory.h>
 #include <xdc/runtime/Log.h>
 #include <xdc/runtime/Diags.h>
@@ -67,11 +68,11 @@
 #include <ti/sysbios/hal/Cache.h>
 
 #include <ti/ipc/rpmsg/InterruptProxy.h>
-#include <ti/ipc/rpmsg/VirtQueueS2S_s2s.h>
+#include <ti/ipc/rpmsg/VirtQueue_s2s.h>
 #include <ti/ipc/MultiProc.h>
 
 #include <ti/resources/IpcMemory.h>
-
+#include <ti/resources/rsc_types.h>
 #include <string.h>
 
 #include "virtio_ring.h"
@@ -266,7 +267,7 @@ Int VirtQueueS2S_addUsedBuf(VirtQueueS2S_Handle vq, Int16 head, int len)
 /*!
  * ======== VirtQueueS2S_addAvailBuf ========
  */
-Void VirtQueueS2S_addAvailBuf(VirtQueueS2S_Object *vq, Void *buf)
+Void VirtQueueS2S_addAvailBuf(VirtQueueS2S_Handle vq, Void *buf)
 {
     UInt16 avail;
 
@@ -283,7 +284,7 @@ Void VirtQueueS2S_addAvailBuf(VirtQueueS2S_Object *vq, Void *buf)
 /*!
  * ======== VirtQueueS2S_getUsedBuf ========
  */
-Void *VirtQueueS2S_getUsedBuf(VirtQueueS2S_Object *vq)
+Void *VirtQueueS2S_getUsedBuf(VirtQueueS2S_Handle vq)
 {
     UInt16 head;
     Void *buf;
@@ -341,7 +342,7 @@ Int16 VirtQueueS2S_getAvailBuf(VirtQueueS2S_Handle vq, Void **buf, int *len)
 /*!
  * ======== VirtQueueS2S_disableCallback ========
  */
-Void VirtQueueS2S_disableCallback(VirtQueueS2S_Object *vq)
+Void VirtQueueS2S_disableCallback(VirtQueueS2S_Handle vq)
 {
     Log_print0(Diags_USER1, "VirtQueueS2S_disableCallback called.");
 }
@@ -350,7 +351,7 @@ Void VirtQueueS2S_disableCallback(VirtQueueS2S_Object *vq)
 /*!
  * ======== VirtQueueS2S_enableCallback ========
  */
-Bool VirtQueueS2S_enableCallback(VirtQueueS2S_Object *vq)
+Bool VirtQueueS2S_enableCallback(VirtQueueS2S_Handle vq)
 {
     Log_print0(Diags_USER1, "VirtQueueS2S_enableCallback called.");
 
@@ -384,7 +385,6 @@ VirtQueueS2S_Handle VirtQueueS2S_create(UInt32 vqId, UInt32 remoteprocId,
 	VirtQueueS2S_dir direction, UInt8 *status_addr)
 {
     VirtQueueS2S_Object *vq;
-    void *vring_phys;
     Error_Block eb;
 
    	if(vqId >= MAX_VIRTQUEUES) {
@@ -414,11 +414,11 @@ VirtQueueS2S_Handle VirtQueueS2S_create(UInt32 vqId, UInt32 remoteprocId,
 		"vring: id=%d addr=0x%x size=0x%x\n", vqId, params->addr,
 		vring_size(params->num, params->align));
 
-    vring_init(&(vq->vring), params->num, params->addr, params->align);
+    vring_init(&(vq->vring), params->num, (void*)params->addr, params->align);
 
 	/* Each processor clears only its TX vq memory. */
-    if(direction = VirtQueueS2S_TX) {
-		memset(params->addr, 0, vring_size(params->num, params->align));
+    if(direction == VirtQueueS2S_TX) {
+		memset((void*)params->addr, 0, vring_size(params->num, params->align));
 		/* Don't trigger a mailbox message every time remote rpoc */
 		/* makes another buffer available.                        */
 		vq->vring.used->flags |= VRING_USED_F_NO_NOTIFY;
@@ -448,11 +448,11 @@ VirtQueueS2S_Handle VirtQueueS2S_create(UInt32 vqId, UInt32 remoteprocId,
 /*!
  * ======== VirtQueueS2S_get ========
  */
-VirtQueueS2S_Object *VirtQueueS2S_getHandle(UInt32 vqid)
+VirtQueueS2S_Handle VirtQueueS2S_getHandle(UInt32 vqId)
 {
     VirtQueueS2S_Object *vq = NULL;
 
-	if(vqid < MAX_VIRTQUEUES)
+	if(vqId < MAX_VIRTQUEUES)
 		vq = queueRegistry[vqId];
 
 	return vq;
@@ -462,10 +462,10 @@ VirtQueueS2S_Object *VirtQueueS2S_getHandle(UInt32 vqid)
 /*!
  * ======== VirtQueueS2S_setCallback ========
  */
-Int VirtQueueS2S_setCallback(UInt32 vqid, VirtQueueS2S_callback callback, UArg priv)
+Int VirtQueueS2S_setCallback(UInt32 vqId, VirtQueueS2S_callback callback, UArg priv)
 {
     Int status = 1;
-    VirtQueueS2S_Object *vq = VirtQueueS2S_get(UInt32 vqid);
+    VirtQueueS2S_Object *vq = VirtQueueS2S_getHandle(vqId);
 
 	if(vq) {
 		vq->callback = callback;
@@ -477,7 +477,7 @@ Int VirtQueueS2S_setCallback(UInt32 vqid, VirtQueueS2S_callback callback, UArg p
 }
 
 
-Void VirtQueueS2S_prime(VirtQueueS2S_Object *vq, UInt16 remoteprocId, int vqid)
+Void VirtQueueS2S_prime(VirtQueueS2S_Object *vq, UInt16 remoteprocId, int vqId)
 {
 	/* fill the Available ring with buffers */
 }
@@ -500,7 +500,7 @@ static struct VirtioIPC_vqdev_db {
 	UInt32 procId;
 } VirtioIPC_vqdev_db[MAX_VQ_PAIRS];
 
-static VirtioIPC_vqdev_cnt;
+static UInt32 VirtioIPC_vqdev_cnt;
 
 
 /* look up the requested VirtQueues */
@@ -510,11 +510,12 @@ Bool VirtioIPC_getVirtQueues(UInt32 type, UInt32 procId, UInt32 rank, UInt32 *tx
 	Int i;
 
 	for(i=0; i<VirtioIPC_vqdev_cnt; i++) {
-		if(type = VirtioIPC_vqdev_db[i].virtioId &&
-		           rank = VirtioIPC_vqdev_db[i].rank &&
-		           procId = VirtioIPC_vqdev_db[i].procId) {
-			*tx_vqid = VirtioIPC_vqdev_db[i].tx_vqid;
-			*rx_vqid = VirtioIPC_vqdev_db[i].rx_vqid;
+		if(type == VirtioIPC_vqdev_db[i].virtioId &&
+		   rank == VirtioIPC_vqdev_db[i].rank &&
+		   procId == VirtioIPC_vqdev_db[i].procId) {
+
+			*tx_vqId = VirtioIPC_vqdev_db[i].tx_vqId;
+			*rx_vqId = VirtioIPC_vqdev_db[i].rx_vqId;
 			return 1;
 		}
 	}
@@ -535,7 +536,6 @@ Int VirtioIPC_init(Void *shared_page)
 	UInt32 sp_pos;		/* used to calcuate address of structs within the shared page */
 	struct fw_rsc_evdev *vd;
 	struct fw_rsc_vdev_vring *tx_vr, *rx_vr;
-	struct fw_rsc_devmem2 *dm;
 	Vring_params params;
 	VirtQueueS2S_Handle tx_vq, rx_vq;
 	UInt8 *tx_status, *rx_status;
@@ -549,58 +549,58 @@ Int VirtioIPC_init(Void *shared_page)
 	}
 
 	num_vd = sp->num;
-	for(vd_cnt == 0; vd_cnt < num_vd; vd_cnt++) {
-		vd = (struct fw_rsc_evdev *)((UInt32)shared_page + sp->offset[vd_cnt]);
+	for(vd_cnt = 0; vd_cnt < num_vd; vd_cnt++) {
+		vd = (struct fw_rsc_evdev *)((UInt32)shared_page + sp->offsets[vd_cnt]);
 		sp_pos = (UInt32)vd + sizeof(struct fw_rsc_evdev);
 
 		// Check virtio_id to see what the type is.  Skip non-rpmsg?
 
 		num_vr = vd->num_of_vrings;
 		for(vr_cnt = 0; vr_cnt < num_vr; vr_cnt += 2) {
-			if(vd->proc_id1 == Multiproc_self()) {
+			if(vd->proc_id1 == MultiProc_self()) {
 				tx_vr = (struct fw_rsc_vdev_vring *)sp_pos;
 				rx_vr = (struct fw_rsc_vdev_vring *)(sp_pos + sizeof(struct fw_rsc_vdev_vring));
 				tx_status = &vd->status1;
 				rx_status = &vd->status2;
-				procId = vd->rpoc_id2;
+				procId = vd->proc_id2;
 			} else {
-				Assert_isTrue(vd->proc_id2 == Multiproc_self());
+				Assert_isTrue(vd->proc_id2 == MultiProc_self(), NULL);
 
 				rx_vr = (struct fw_rsc_vdev_vring *)sp_pos;
 				tx_vr = (struct fw_rsc_vdev_vring *)(sp_pos + sizeof(struct fw_rsc_vdev_vring));
 				rx_status = &vd->status1;
 				tx_status = &vd->status2;
-				procId = vd->rpoc_id1;
+				procId = vd->proc_id1;
 			}
 
 			params.num = tx_vr->num;
 			params.addr = tx_vr->da;
 			params.align = tx_vr->align;
-			tx_vq = VirtQueueS2S_Object *VirtQueueS2S_create(tx_vr->notify_id, procId,
-					NULL, &params, VirtQueueS2S_TX, tx_status);
+			tx_vq = VirtQueueS2S_create(tx_vr->notifyid, procId, NULL,
+			                            &params, VirtQueueS2S_TX, tx_status);
 
 			if(tx_vq == NULL)
-				Error_raise(NULL, Error_E_generic, "VirtQueue creation failure: %d", tx_vr->notify_id);
+				Error_raise(NULL, Error_E_generic, "VirtQueue creation failure: %d", tx_vr->notifyid);
 
 			params.num = rx_vr->num;
 			params.addr = rx_vr->da;
 			params.align = rx_vr->align;
-			rx_vq = VirtQueueS2S_Object *VirtQueueS2S_create(rx_vr->notify_id, procId,
-					NULL, &params, VirtQueueS2S_RX, rx_status);
+			rx_vq = VirtQueueS2S_create(rx_vr->notifyid, procId, NULL,
+			                            &params, VirtQueueS2S_RX, rx_status);
 
 			if(rx_vq == NULL)
-				Error_raise(NULL, Error_E_generic, "VirtQueue creation failure: %d", rx_vr->notify_id);
+				Error_raise(NULL, Error_E_generic, "VirtQueue creation failure: %d", rx_vr->notifyid);
 
-			VirtioIPC_vqdev_db[VirtioIPC_VQ_cnt].virtioId = vd->vertio_id;
-			VirtioIPC_vqdev_db[VirtioIPC_VQ_cnt].rank = vr_cnt;
-			VirtioIPC_vqdev_db[VirtioIPC_VQ_cnt].tx_vqId = tx_vr->notify_id;
-			VirtioIPC_vqdev_db[VirtioIPC_VQ_cnt].rx_vqId = rx_vr->notify_id;
-			VirtioIPC_vqdev_db[VirtioIPC_VQ_cnt].procId = procId;
+			VirtioIPC_vqdev_db[VirtioIPC_vqdev_cnt].virtioId = vd->virtio_id;
+			VirtioIPC_vqdev_db[VirtioIPC_vqdev_cnt].rank = vr_cnt;
+			VirtioIPC_vqdev_db[VirtioIPC_vqdev_cnt].tx_vqId = tx_vr->notifyid;
+			VirtioIPC_vqdev_db[VirtioIPC_vqdev_cnt].rx_vqId = rx_vr->notifyid;
+			VirtioIPC_vqdev_db[VirtioIPC_vqdev_cnt].procId = procId;
 			VirtioIPC_vqdev_cnt++;
 		}
 
 		/* signal completion of the initialization of the TX vrings */
-		if(vd->proc_id1 == Multiproc_self()) {
+		if(vd->proc_id1 == MultiProc_self()) {
 			vd->status1 = 1;
 		} else {
 			vd->status2 = 1;
@@ -608,6 +608,7 @@ Int VirtioIPC_init(Void *shared_page)
 
 		/* Deal with any fw_rsc_devmem entries here */
 	}
+	return 0;
 }
 
 

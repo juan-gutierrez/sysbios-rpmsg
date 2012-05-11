@@ -39,7 +39,7 @@
  *  - BIOS (XDC) types and CamelCasing used;
  *  - virtio_device concept removed (i.e, assumes no containing device);
  *  - removed scatterlist;
- *  - VirtQueues are created statically here, so just added a VirtQueue_init()
+ *  - VirtQueues are created statically here, so just added a VirtQueueS2S_init()
  *    fxn to take the place of the Virtio vring_new_virtqueue() API;
  *  - The notify function is implicit in the implementation, and not provided
  *    by the client, as it is in Linux virtio.
@@ -85,17 +85,21 @@
  *  ============================================================================
  */
 
-#ifndef ti_ipc_VirtQueue__include
-#define ti_ipc_VirtQueue__include
+#ifndef ti_ipc_VirtQueueS2S__include
+#define ti_ipc_VirtQueueS2S__include
 
 #if defined (__cplusplus)
 extern "C" {
 #endif
 
-typedef enum VirtQueue_dir {
-	VirtQueue_TX,
-	VirtQueue_RX
-} VirtQueue_dir;
+typedef enum VirtioIPC_vqdev_types {
+	VirtioIPC_RPMSG
+} VirtioIPC_vqdev_types;
+
+typedef enum VirtQueueS2S_dir {
+	VirtQueueS2S_TX,
+	VirtQueueS2S_RX
+} VirtQueueS2S_dir;
 
 typedef struct Vring_params {
 	UInt32	num;
@@ -106,16 +110,16 @@ typedef struct Vring_params {
 /*!
  *  @brief  a queue to register buffers for sending or receiving.
  */
-typedef struct VirtQueue_Object *VirtQueue_Handle;
+typedef struct VirtQueueS2S_Object *VirtQueueS2S_Handle;
 
 /*!
- *  @var     VirtQueue_callback
+ *  @var     VirtQueueS2S_callback
  *  @brief   Signature of any callback function that can be registered with the
  *           VirtQueue
  *
  *  @param[in]  VirtQueue     Pointer to the VirtQueue which was signalled.
  */
-typedef Void (*VirtQueue_callback)(UArg);
+typedef Void (*VirtQueueS2S_callback)(UArg);
 
 /*!
  *  @brief      Initialize at runtime the VirtQueue
@@ -137,24 +141,26 @@ VirtQueueS2S_Handle VirtQueueS2S_create(UInt32 vqId, UInt32 remoteprocId,
  *
  *  @param[in]  vq        the VirtQueue.
  *
- *  @sa         VirtQueue_addBuf
+ *  @sa         VirtQueueS2S_addBuf
  */
-Void VirtQueue_kick(VirtQueue_Handle vq);
+Void VirtQueueS2S_kick(VirtQueueS2S_Handle vq);
 
 /*!
  *  @brief       Used at startup-time for initialization
  *
  *  Should be called before any other VirtQueue APIs
  */
-Void VirtQueue_startup();
+Void VirtQueueS2S_startup();
 
 Int VirtQueueS2S_setCallback(UInt32 vqid, VirtQueueS2S_callback callback, UArg priv);
 
-VirtQueueS2S_Handle *VirtQueueS2S_getHandle(UInt32 vqid);
+VirtQueueS2S_Handle VirtQueueS2S_getHandle(UInt32 vqid);
 
-Void VirtQueueS2S_prime(VirtQueueS2S_Object *vq, UInt16 remoteprocId, int vqid);
+Void VirtQueueS2S_prime(VirtQueueS2S_Handle vq, UInt16 remoteprocId, int vqid);
 
 Bool VirtioIPC_getVirtQueues(UInt32 type, UInt32 procId, UInt32 rank, UInt32 *tx_vqId, UInt32 *rx_vqId);
+
+Int VirtioIPC_init(Void *shared_page);
 
 
 /*
@@ -172,9 +178,9 @@ Bool VirtioIPC_getVirtQueues(UInt32 type, UInt32 procId, UInt32 rank, UInt32 *tx
  *
  *  @return     Remaining capacity of queue or a negative error.
  *
- *  @sa         VirtQueue_getUsedBuf
+ *  @sa         VirtQueueS2S_getUsedBuf
  */
-Int VirtQueue_addAvailBuf(VirtQueue_Handle vq, Void *buf);
+Void VirtQueueS2S_addAvailBuf(VirtQueueS2S_Handle vq, Void *buf);
 
 /*!
  *  @brief      Get the next used buffer.
@@ -184,9 +190,9 @@ Int VirtQueue_addAvailBuf(VirtQueue_Handle vq, Void *buf);
  *
  *  @return     Returns NULL or the processed buffer.
  *
- *  @sa         VirtQueue_addAvailBuf
+ *  @sa         VirtQueueS2S_addAvailBuf
  */
-Void *VirtQueue_getUsedBuf(VirtQueue_Handle vq);
+Void *VirtQueueS2S_getUsedBuf(VirtQueueS2S_Handle vq);
 
 /*
  *  ============================================================================
@@ -202,12 +208,12 @@ Void *VirtQueue_getUsedBuf(VirtQueue_Handle vq);
  *  @param[out] buf       Pointer to location of available buffer;
  *
  *  @return     Returns a token used to identify the available buffer, to be
- *              passed back into VirtQueue_addUsedBuf();
+ *              passed back into VirtQueueS2S_addUsedBuf();
  *              token is negative if failure to find an available buffer.
  *
- *  @sa         VirtQueue_addUsedBuf
+ *  @sa         VirtQueueS2S_addUsedBuf
  */
-Int16 VirtQueue_getAvailBuf(VirtQueue_Handle vq, Void **buf, int *len);
+Int16 VirtQueueS2S_getAvailBuf(VirtQueueS2S_Handle vq, Void **buf, int *len);
 
 /*!
  *  @brief      Add used buffer to virtqueue's used buffer list.
@@ -218,9 +224,9 @@ Int16 VirtQueue_getAvailBuf(VirtQueue_Handle vq, Void **buf, int *len);
  *
  *  @return     Remaining capacity of queue or a negative error.
  *
- *  @sa         VirtQueue_getAvailBuf
+ *  @sa         VirtQueueS2S_getAvailBuf
  */
-Int VirtQueue_addUsedBuf(VirtQueue_Handle vq, Int16 token, int len);
+Int VirtQueueS2S_addUsedBuf(VirtQueueS2S_Handle vq, Int16 token, int len);
 
 #define ID_SELF_TO_A9       0
 #define ID_A9_TO_SELF       1
@@ -233,4 +239,4 @@ Int VirtQueue_addUsedBuf(VirtQueue_Handle vq, Int16 token, int len);
 #if defined (__cplusplus)
 }
 #endif /* defined (__cplusplus) */
-#endif /* ti_ipc_VirtQueue__include */
+#endif /* ti_ipc_VirtQueueS2S__include */

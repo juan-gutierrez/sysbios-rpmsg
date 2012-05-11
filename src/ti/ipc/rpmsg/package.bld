@@ -50,6 +50,8 @@ var objList_64T = [
       "MessageQCopy",
       "VirtQueue",
       "InterruptDsp",
+      "MessageQCopy_s2s",
+      "VirtQueue_s2s"
 ];
 
 var trgFilter_64T = {
@@ -61,6 +63,8 @@ var objList_m3 = [
       "MessageQCopy",
       "VirtQueue",
       "InterruptM3",
+      "MessageQCopy_s2s",
+      "VirtQueue_s2s"
 ];
 
 var trgFilter_m3 = {

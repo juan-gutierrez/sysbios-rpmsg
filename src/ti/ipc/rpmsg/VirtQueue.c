@@ -356,7 +356,8 @@ Void VirtQueue_isr(UArg msg, UArg arg)
 {
     VirtQueue_Object *vq;
 
-    Log_print1(Diags_USER1, "VirtQueue_isr received msg = 0x%x\n", msg);
+//    Log_print1(Diags_USER1, "VirtQueue_isr received msg = 0x%x", msg);
+//    System_printf( "VirtQueue_isr msg 0x%x arg 0x%x\n", msg, arg);
 
     if (MultiProc_self() == sysm3ProcId || MultiProc_self() == dspProcId) {
         switch(msg) {
@@ -498,7 +499,7 @@ Void VirtQueue_startup()
     /* Initilize the IpcPower module */
     IpcPower_init();
 
-    InterruptProxy_intRegister(hostProcId, VirtQueue_isr, 0);
+    InterruptProxy_intRegister(hostProcId, VirtQueue_isr, hostProcId);
 }
 
 /*!

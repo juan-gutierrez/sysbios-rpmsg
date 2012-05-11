@@ -46,7 +46,7 @@ if (c6x_cgtools_rootdir != null) {
     var C64T = xdc.useModule('ti.targets.elf.C64T');
     C64T.rootDir = c6x_cgtools_rootdir;
     C64T.ccOpts.suffix += " -mi10 -mo -pds=71";
-    C64T.lnkOpts.prefix += " -e=ti_sysbios_family_c64p_Hwi0";
+    C64T.lnkOpts.prefix += " -e=ti_sysbios_family_c64p_Hwi0  --retain=.ipu_dsp_shared_page";
     /* Set default platform and list of all interested platforms for c64T */
     C64T.platforms = ["ti.platform.omap4430.dsp"];
     C64T.platform = C64T.platforms[0];
@@ -59,7 +59,7 @@ if (arm_cgtools_rootdir != null) {
     var M3 = xdc.useModule('ti.targets.arm.elf.M3');
     M3.rootDir = arm_cgtools_rootdir;
     M3.ccOpts.suffix += " --embed_inline_assembly -ms -pds=71";
-    M3.lnkOpts.prefix += " --retain=.resource_table";
+    M3.lnkOpts.prefix += " --retain=.ipu_dsp_shared_page --retain=.resource_table ";
     /* Set default platform and list of all interested platforms for M3 */
     M3.platforms = [
         "ti.platform.omap4430.core0",

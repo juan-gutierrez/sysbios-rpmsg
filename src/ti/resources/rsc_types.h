@@ -137,6 +137,9 @@ struct resource_table {
 	/* text carveout entry */
 	struct fw_rsc_carveout text_cout;
 
+	/* text carveout entry */
+	struct fw_rsc_carveout dsp_ipu_ipc;
+
 	/* trace entry */
 	struct fw_rsc_trace trace;
 
@@ -168,35 +171,35 @@ struct resource_table {
 
 
 struct shared_ipc_page {
- u32 version;		//needed to ensure backwards compatibility
- u32 num;			//numbers of entries in the page
- u32 reserved[2];
- u32 offsets[];		//array of offsets to the entries in this page
+	UInt32 version;		//needed to ensure backwards compatibility
+	UInt32 num;			//numbers of entries in the page
+	UInt32 reserved[2];
+	UInt32 offsets[1];		//array of offsets to the entries in this page
 };
 
 struct fw_rsc_evdev {
-	u32 virtio_id; //RPMSG...
-	u32 proc_id1; //id of the subsystem with the lower id integer
-	u32 proc_id2; //id of the subsystem with the higher id integer
-	u32 notify_id; //notification id representing status changes of this evdev
-	u32 features1; //virtio features supported by the first subsystem
-	u32 features2; //virtio features supported by the second subsystem
-	u32 config_len; //length of config space (comes right after the vrings)
-	u32 reserved;
-	u8 status1; //status of first subsystem
-	u8 status2; //status of second subsystem
-	u8 num_of_vrings; //number of vring entries (come right after this structure)
-	u8 reserved;
+	UInt32 virtio_id; //RPMSG...
+	UInt32 proc_id1; //id of the subsystem with the lower id integer
+	UInt32 proc_id2; //id of the subsystem with the higher id integer
+	UInt32 notify_id; //notification id representing status changes of this evdev
+	UInt32 features1; //virtio features supported by the first subsystem
+	UInt32 features2; //virtio features supported by the second subsystem
+	UInt32 config_len; //length of config space (comes right after the vrings)
+	UInt32 reserved1;
+	UInt8 status1; //status of first subsystem
+	UInt8 status2; //status of second subsystem
+	UInt8 num_of_vrings; //number of vring entries (come right after this structure)
+	UInt8 reserved2;
 };
 
 
 struct fw_rsc_devmem2 {
-	u32 da1; //device address of subsystem1 (i.e. The one with the lowed id)
-	u32 da2; //device address of subsystem2 (i.e. The one with the higher id)
-	u32 len;
-	u32 flags;
-	u32 reserved;
-	u32 name[32];
+	UInt32 da1; //device address of subsystem1 (i.e. The one with the lowed id)
+	UInt32 da2; //device address of subsystem2 (i.e. The one with the higher id)
+	UInt32 len;
+	UInt32 flags;
+	UInt32 reserved;
+	UInt32 name[32];
 };
 
 
@@ -205,5 +208,5 @@ struct ipu_dsp_shared_page {
 	struct fw_rsc_evdev			evdev1;
 	struct fw_rsc_vdev_vring	vring1;
 	struct fw_rsc_vdev_vring	vring2;
-}
+};
 #endif /* _RSC_TYPES_H_ */

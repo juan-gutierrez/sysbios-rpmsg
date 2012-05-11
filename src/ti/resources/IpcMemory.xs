@@ -73,7 +73,8 @@ function module$use()
         /* The .resource_table section should always be at the segment base */
         Program.sectMap[".ipu_dsp_shared_page"] = new Program.SectionSpec();
         Program.sectMap[".ipu_dsp_shared_page"].type = "NOINIT";
-        Program.sectMap[".ipu_dsp_shared_page"].loadAddress = 0xa0100000;
+//        Program.sectMap[".ipu_dsp_shared_page"].loadAddress = 0xa0100000;
+        Program.sectMap[".ipu_dsp_shared_page"].loadSegment = "IPC_DATA";
     }
 }
 
