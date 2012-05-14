@@ -112,7 +112,7 @@
 #define SZ_512M                         0x20000000
 
 #ifndef DATA_SIZE
-#  define DATA_SIZE  (SZ_512K)  /* data */
+#  define DATA_SIZE  (SZ_1M)  /* data */
 #endif
 
 #  define HEAP_SIZE  (SZ_2M + SZ_128K) /* heap +pm_data*/
