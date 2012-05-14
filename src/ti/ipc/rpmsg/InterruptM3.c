@@ -267,15 +267,13 @@ Void InterruptM3_intSend(UInt16 remoteProcId, UArg arg)
 
     if (remoteProcId == MultiProc_getId("DSP")) {
         key = Hwi_disable();
-        if (REG32(MAILBOX_STATUS(IPU_TO_DSP_MBX)) == 0) {
-            REG32(MAILBOX_MESSAGE(IPU_TO_DSP_MBX)) = arg;
-        }
+        while(REG32(MAILBOX_FIFOSTATUS(IPU_TO_DSP_MBX)));
+        REG32(MAILBOX_MESSAGE(IPU_TO_DSP_MBX)) = arg;
         Hwi_restore(key);
     } else if(remoteProcId == MultiProc_getId("HOST")) {
         key = Hwi_disable();
-        if (REG32(MAILBOX_STATUS(IPU_TO_HOST_MBX)) == 0) {
-            REG32(MAILBOX_MESSAGE(IPU_TO_HOST_MBX)) = arg;
-        }
+        while(REG32(MAILBOX_FIFOSTATUS(IPU_TO_HOST_MBX)));
+        REG32(MAILBOX_MESSAGE(IPU_TO_HOST_MBX)) = arg;
         Hwi_restore(key);
     } else {
         Error_raise(NULL, Error_E_generic, "Invalid remote processor: %d", remoteProcId);

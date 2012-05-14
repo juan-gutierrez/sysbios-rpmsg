@@ -248,17 +248,15 @@ Void InterruptDsp_intSend(UInt16 remoteProcId,
     if (remoteProcId == MultiProc_getId("HOST")) {
         /* Using mailbox 0 */
         key = Hwi_disable();
-        if (REG32(MAILBOX_STATUS(DSP_TO_HOST_MBX)) == 0) {
-            REG32(MAILBOX_MESSAGE(DSP_TO_HOST_MBX)) = arg;
-        }
+        while(REG32(MAILBOX_STATUS(DSP_TO_HOST_MBX)));
+        REG32(MAILBOX_MESSAGE(DSP_TO_HOST_MBX)) = arg;
         Hwi_restore(key);
     }
     else if (remoteProcId == MultiProc_getId("CORE0")) {
         /* Using mailbox 1 */
         key = Hwi_disable();
-        if (REG32(MAILBOX_STATUS(DSP_TO_IPU_MBX)) == 0) {
-            REG32(MAILBOX_MESSAGE(DSP_TO_IPU_MBX)) = arg;
-        }
+        while(REG32(MAILBOX_STATUS(DSP_TO_IPU_MBX)));
+        REG32(MAILBOX_MESSAGE(DSP_TO_IPU_MBX)) = arg;
         Hwi_restore(key);
     }
     else {
