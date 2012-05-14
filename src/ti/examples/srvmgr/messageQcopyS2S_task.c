@@ -71,6 +71,11 @@ Void messageQcopyS2S_taskFxn(UArg arg0, UArg arg1)
 	VirtioIPC_init((void*)0xa0100000);
 	MessageQCopyS2S_init();
 
+{
+    volatile int x=1;
+    while(x);
+}
+
 	/* Create the messageQ for receiving (and get our endpoint for sending). */
 	if (MultiProc_self() > dstProc) {
 		handle = MessageQCopyS2S_create(222, &myEndpoint);

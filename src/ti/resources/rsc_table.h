@@ -95,9 +95,9 @@
 #define DUCATI_TO_TESLA_RPMSG_TX_VRING_DA 0x0
 
 #define MEM_INTERPROC           0xA0100000
-#define PHYS_MEM_INTERPROC      0xA9100000
-#define IPU_TO_DSP_VRING		0xA0101000
-#define DSP_TO_IPU_VRING		0xA0102000
+#define PHYS_MEM_INTERPROC      0xA8600000
+#define IPU_TO_DSP_VRING		0xA0110000
+#define DSP_TO_IPU_VRING		0xA0160000
 
 /*
  * sizes of the virtqueues (expressed in number of buffers supported,
@@ -191,7 +191,7 @@ struct resource_table resources = {
 	},
 
 	{
-		TYPE_CARVEOUT, MEM_INTERPROC, PHYS_MEM_INTERPROC, SZ_1M, 0, 0, "DSP_IPU_VRING",
+		TYPE_DEVMEM, MEM_INTERPROC, PHYS_MEM_INTERPROC, SZ_1M, 0, 0, "DSP_IPU_VRING",
 	},
 
 	{
@@ -262,7 +262,7 @@ struct ipu_dsp_shared_page shared_page = {
 		}
 	},
 	{
-		1, 1, 2, 0xff, 0, 0, 0, 0, 0, 0, 2, 0
+		1, 1, 3, 0xff, 0, 0, 0, 0, 0, 0, 2, 0
 	},
 	{
 		IPU_TO_DSP_VRING, 4096, 256, 1, 0

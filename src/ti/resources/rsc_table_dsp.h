@@ -82,7 +82,7 @@
 #define BUFS1_DA                0xA0080000
 
 #define MEM_INTERPROC           0xA0100000
-#define PHYS_MEM_INTERPROC      0xA9100000
+#define PHYS_MEM_INTERPROC      0xA8600000
 
 
 /*
@@ -183,7 +183,7 @@ struct resource_table resources = {
 	},
 
 	{
-		TYPE_CARVEOUT, MEM_INTERPROC, PHYS_MEM_INTERPROC, SZ_2M, 0, 0, "DSP_IPU_VRING",
+		TYPE_DEVMEM, MEM_INTERPROC, PHYS_MEM_INTERPROC, SZ_1M, 0, 0, "DSP_IPU_VRING",
 	},
 
 	{
