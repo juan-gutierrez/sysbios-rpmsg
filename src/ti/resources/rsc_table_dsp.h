@@ -83,6 +83,8 @@
 
 #define MEM_INTERPROC           0xA0100000
 #define PHYS_MEM_INTERPROC      0xA8600000
+#define IPU_TO_DSP_VRING		0xA0110000
+#define DSP_TO_IPU_VRING		0xA0160000
 
 
 /*
@@ -183,8 +185,9 @@ struct resource_table resources = {
 	},
 
 	{
-		TYPE_DEVMEM, MEM_INTERPROC, PHYS_MEM_INTERPROC, SZ_1M, 0, 0, "DSP_IPU_VRING",
+		TYPE_DEVMEM, MEM_INTERPROC, PHYS_MEM_INTERPROC, 0x100000, 0, 0, "DSP_IPU_VRING",
 	},
+
 
 	{
 		TYPE_TRACE, TRACEBUFADDR, 0x8000, 0, "trace:dsp",
@@ -228,6 +231,24 @@ struct resource_table resources = {
 
 #pragma DATA_SECTION(shared_page, ".ipu_dsp_shared_page")
 #pragma DATA_ALIGN(shared_page, 4096)
+
+struct ipu_dsp_shared_page shared_page = {
+	{
+		1, 1, {0, 0},
+		{
+		offsetof(struct ipu_dsp_shared_page, evdev1)
+		}
+	},
+	{
+		1, 1, 3, 0xff, 0, 0, 0, 0, 0, 0, 2, 0
+	},
+	{
+		IPU_TO_DSP_VRING, 4096, 256, 1, 0
+	},
+	{
+		DSP_TO_IPU_VRING, 4096, 256, 2, 0
+	}
+};
 
 
 struct ipu_dsp_shared_page shared_page;

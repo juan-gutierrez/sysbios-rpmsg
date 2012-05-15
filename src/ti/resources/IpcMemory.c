@@ -91,9 +91,10 @@ Int IpcMemory_virtToPhys(UInt32 va, UInt32 *pa)
     IpcMemory_MemEntry *entry;
 
     *pa = NULL;
-
+    //System_printf("size rsctable = %d", *IpcMemory_module->pSize);
     for (i = 0; i < *IpcMemory_module->pSize; i++) {
         entry = IpcMemory_getEntry(i);
+	//System_printf("Is 0x%x < va(0x%x) < 0x%x ?\n",  entry->da, va, entry->da + entry->len);
         if (entry && va >= entry->da && va < (entry->da + entry->len)) {
                 offset = va - entry->da;
                 *pa = entry->pa + offset;

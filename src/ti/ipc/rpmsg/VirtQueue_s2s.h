@@ -93,7 +93,7 @@ extern "C" {
 #endif
 
 typedef enum VirtioIPC_vqdev_types {
-	VirtioIPC_RPMSG
+	VirtioIPC_RPMSG = 1
 } VirtioIPC_vqdev_types;
 
 typedef enum VirtQueueS2S_dir {

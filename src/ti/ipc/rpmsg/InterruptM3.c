@@ -39,6 +39,8 @@
 #include <xdc/runtime/Log.h>
 #include <xdc/runtime/Diags.h>
 #include <xdc/runtime/Error.h>
+#include <xdc/runtime/System.h>
+
 
 #include <ti/sysbios/hal/Hwi.h>
 #include <ti/sysbios/family/arm/ducati/Core.h>
@@ -315,10 +317,13 @@ Void InterruptM3_intShmMbxStub(UArg arg)
 //    InterruptM3_FxnTable *table;
     UInt msg;
 
+	System_printf("Mbox ");
+
     /* Process messages from the DSP  */
     if ((REG32(MAILBOX_IRQENABLE_SET_IPU) & MAILBOX_REG_VAL(DSP_TO_IPU_MBX)) &&
 			REG32(MAILBOX_STATUS(DSP_TO_IPU_MBX)) != 0) {
 		msg = REG32(MAILBOX_MESSAGE(DSP_TO_IPU_MBX));
+		System_printf("from IPU 0x%x\n", msg);
 		REG32(MAILBOX_IRQSTATUS_CLR_IPU) = MAILBOX_REG_VAL(DSP_TO_IPU_MBX);
         (table[0].func)(msg, table[0].arg);
     }
@@ -327,6 +332,7 @@ Void InterruptM3_intShmMbxStub(UArg arg)
     if ((REG32(MAILBOX_IRQENABLE_SET_IPU) & MAILBOX_REG_VAL(HOST_TO_IPU_MBX)) &&
 			REG32(MAILBOX_STATUS(HOST_TO_IPU_MBX)) != 0) {
 		msg = REG32(MAILBOX_MESSAGE(HOST_TO_IPU_MBX));
+		System_printf("from IPU 0x%x\n", msg);
 		REG32(MAILBOX_IRQSTATUS_CLR_IPU) = MAILBOX_REG_VAL(HOST_TO_IPU_MBX);
         (table[1].func)(msg, table[1].arg);
     }

@@ -191,7 +191,7 @@ struct resource_table resources = {
 	},
 
 	{
-		TYPE_DEVMEM, MEM_INTERPROC, PHYS_MEM_INTERPROC, SZ_1M, 0, 0, "DSP_IPU_VRING",
+		TYPE_DEVMEM, MEM_INTERPROC, PHYS_MEM_INTERPROC, 0x100000, 0, 0, "DSP_IPU_VRING",
 	},
 
 	{

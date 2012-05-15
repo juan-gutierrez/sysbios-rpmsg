@@ -209,7 +209,10 @@ static inline UInt mapVAtoPA(Void * va)
 {
     UInt32 pa;
 
+    
     IpcMemory_virtToPhys((UInt32)va, &pa);
+    //System_printf("va(0x%x)-->pa(0x%x)\n",(UInt32)va, pa);
+
     return pa;
 }
 
@@ -227,6 +230,8 @@ Void VirtQueueS2S_kick(VirtQueueS2S_Handle vq)
 
     Log_print2(Diags_USER1,
             "VirtQueueS2S_kick: Sending interrupt to proc %d with payload 0x%x\n",
+            (IArg)vq->procId, (IArg)vq->id);
+    System_printf("VirtQueueS2S_kick: Sending interrupt to proc %d with payload 0x%x\n",
             (IArg)vq->procId, (IArg)vq->id);
     InterruptProxy_intSend(vq->procId, vq->id);
 }
@@ -255,8 +260,10 @@ Int VirtQueueS2S_addUsedBuf(VirtQueueS2S_Handle vq, Int16 head, int len)
     * next entry in that used ring.
     */
     used = &vq->vring.used->ring[vq->vring.used->idx % vq->vring.num];
+
     used->id = head;
     used->len = len;
+    System_printf("AddUsedbuf used(0x%x)->len = 0x%x\n", used, used->len);
 
     vq->vring.used->idx++;
 
@@ -330,7 +337,9 @@ Int16 VirtQueueS2S_getAvailBuf(VirtQueueS2S_Handle vq, Void **buf, int *len)
      * Grab the next descriptor number they're advertising, and increment
      * the index we've seen.
      */
+    
     head = vq->vring.avail->ring[vq->last_avail_idx++ % vq->vring.num];
+    System_printf("head(0x%x) = avail_ring(0x%x)[%d] --> vq->vring.desc(0x%x) = (0x%x)\n", head, &(vq->vring.avail->ring[0]), vq->last_avail_idx++ % vq->vring.num, &(vq->vring.desc[head]), vq->vring.desc[head].addr);
 
     *buf = mapPAtoVA(vq->vring.desc[head].addr);
     *len = vq->vring.desc[head].len;
@@ -369,6 +378,7 @@ Void VirtQueueS2S_isr(UArg msg, UArg priv)
     VirtQueueS2S_Object *vq;
 
     Log_print1(Diags_USER1, "VirtQueueS2S_isr received msg = 0x%x\n", msg);
+    System_printf("VirtQueueS2S_isr received msg = 0x%x\n", msg);
 
 	vq = queueRegistry[msg];
 	if (vq) {
@@ -384,6 +394,8 @@ VirtQueueS2S_Handle VirtQueueS2S_create(UInt32 vqId, UInt32 remoteprocId,
 	VirtQueueS2S_callback callback, Vring_params *params,
 	VirtQueueS2S_dir direction, UInt8 *status_addr)
 {
+    void* buf;
+    UInt32 i, vSize, buf_addr;
     VirtQueueS2S_Object *vq;
     Error_Block eb;
 
@@ -414,14 +426,41 @@ VirtQueueS2S_Handle VirtQueueS2S_create(UInt32 vqId, UInt32 remoteprocId,
 		"vring: id=%d addr=0x%x size=0x%x\n", vqId, params->addr,
 		vring_size(params->num, params->align));
 
+
+    vSize = vring_size(params->num, params->align);
+    if (MultiProc_getId("CORE0") == remoteprocId) {
+    	buf_addr = 0xA0120000;
+    }
+    else {
+    	buf_addr = 0xA0170000;
+    }
+    System_printf("vring: id=%d addr=0x%x size=0x%x, buf_addr(0x%x)\n", vqId, params->addr, vSize, buf_addr);
+
+
     vring_init(&(vq->vring), params->num, (void*)params->addr, params->align);
 
 	/* Each processor clears only its TX vq memory. */
+//    if(1) {	
     if(direction == VirtQueueS2S_TX) {
 		memset((void*)params->addr, 0, vring_size(params->num, params->align));
 		/* Don't trigger a mailbox message every time remote rpoc */
 		/* makes another buffer available.                        */
 		vq->vring.used->flags |= VRING_USED_F_NO_NOTIFY;
+		//vq->num_free = params->num;
+		for (i = 0; i < params->num - 1; i++) {
+			vq->vring.desc[i].addr = 0;
+			vq->vring.desc[i].padding= 0;
+			vq->vring.desc[i].next = i + 1;
+			vq->vring.desc[i].flags= 0;
+		}
+		vq->vring.avail->idx = 0;
+		vq->vring.avail->flags = 0;
+		for (i = 0; i < params->num; i++) {
+			buf = (void*) ((UInt)buf_addr + i * RP_MSG_BUF_SIZE);
+			VirtQueueS2S_addAvailBuf(vq, buf);
+		}
+		
+		
 	}
 
     //if (master) {
@@ -576,6 +615,7 @@ Int VirtioIPC_init(Void *shared_page)
 			params.num = tx_vr->num;
 			params.addr = tx_vr->da;
 			params.align = tx_vr->align;
+			System_printf("TX VQ_create( notify(0x%x), prod(0x%x), stat(0x%x) addr(0x%x))\n", tx_vr->notifyid, procId,tx_status,params.addr);
 			tx_vq = VirtQueueS2S_create(tx_vr->notifyid, procId, NULL,
 			                            &params, VirtQueueS2S_TX, tx_status);
 
@@ -585,6 +625,7 @@ Int VirtioIPC_init(Void *shared_page)
 			params.num = rx_vr->num;
 			params.addr = rx_vr->da;
 			params.align = rx_vr->align;
+			System_printf("RX VQ_create( notify(0x%x), prod(0x%x), stat(0x%x) addr(0x%x))\n", rx_vr->notifyid, procId,rx_status, params.addr);
 			rx_vq = VirtQueueS2S_create(rx_vr->notifyid, procId, NULL,
 			                            &params, VirtQueueS2S_RX, rx_status);
 
@@ -592,10 +633,13 @@ Int VirtioIPC_init(Void *shared_page)
 				Error_raise(NULL, Error_E_generic, "VirtQueue creation failure: %d", rx_vr->notifyid);
 
 			VirtioIPC_vqdev_db[VirtioIPC_vqdev_cnt].virtioId = vd->virtio_id;
+			System_printf("VirtioId = %d\n", vd->virtio_id);
 			VirtioIPC_vqdev_db[VirtioIPC_vqdev_cnt].rank = vr_cnt;
+			System_printf("Rank = %d\n", vr_cnt);
 			VirtioIPC_vqdev_db[VirtioIPC_vqdev_cnt].tx_vqId = tx_vr->notifyid;
 			VirtioIPC_vqdev_db[VirtioIPC_vqdev_cnt].rx_vqId = rx_vr->notifyid;
 			VirtioIPC_vqdev_db[VirtioIPC_vqdev_cnt].procId = procId;
+			System_printf("ProcId = %d\n", procId);
 			VirtioIPC_vqdev_cnt++;
 		}
 

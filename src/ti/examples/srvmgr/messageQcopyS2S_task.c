@@ -72,24 +72,24 @@ Void messageQcopyS2S_taskFxn(UArg arg0, UArg arg1)
 	MessageQCopyS2S_init();
 
 {
-    volatile int x=1;
+    volatile int x=0;
     while(x);
 }
 
 	/* Create the messageQ for receiving (and get our endpoint for sending). */
 	if (MultiProc_self() > dstProc) {
-		handle = MessageQCopyS2S_create(222, &myEndpoint);
+		handle = MessageQCopyS2S_create(22, &myEndpoint);
 		len = snprintf(buffer, sizeof(buffer), "HELLO_FROM_%s", MultiProc_getName(MultiProc_self()));
 		/* Task_sleep(3000); */
 		System_printf("Sending msg %s from %s to %s...\n", buffer, MultiProc_getName(MultiProc_self()),
 					MultiProc_getName(dstProc));
-		status = MessageQCopyS2S_send(dstProc, 111, myEndpoint, &buffer, len);
+		status = MessageQCopyS2S_send(dstProc, 11, myEndpoint, &buffer, len);
 		if (status) {
 			System_printf("MessageQCopyS2S_taskFxn: MessageQCopyS2S_send "
 						" failed status %d\n", status);
 		}
 	} else {
-		handle = MessageQCopyS2S_create(111, &myEndpoint);
+		handle = MessageQCopyS2S_create(11, &myEndpoint);
 	}
 	for (i = 0; i < 25; i++) {
 		/* Await a character message: */

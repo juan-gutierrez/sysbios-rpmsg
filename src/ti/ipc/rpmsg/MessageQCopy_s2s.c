@@ -318,7 +318,8 @@ Void MessageQCopyS2S_init()
 	/* Setup the module's key data structures that control the  */
 	/* releationship between VQs, msgQs and endpoint pools.     */
 	for(p = 0; p < MultiProc_getNumProcessors(); p++) {
-		if(VirtioIPC_getVirtQueues(VirtioIPC_RPMSG, p, 1, &tx_vqId, &rx_vqId)) {
+		System_printf("VirtioIPC_getVirtQueues type(%d) procId(%d) rank(%d)\n", VirtioIPC_RPMSG, p, 0);
+		if(VirtioIPC_getVirtQueues(VirtioIPC_RPMSG, p, 0, &tx_vqId, &rx_vqId)) {
 			/* setup the receiving path */
 			module.VQ_callbacks[rx_vqId].pool = &module.global_pool;
 			module.VQ_callbacks[rx_vqId].vqId = rx_vqId;
@@ -334,10 +335,12 @@ Void MessageQCopyS2S_init()
 			module.VQ_callbacks[tx_vqId].vqId = tx_vqId;
 			module.VQ_callbacks[tx_vqId].swi = NULL;
 		} else {
+			System_printf("NO_PRIMARY_VQ\n");
+
 			module.primary_VQs[p] = NO_PRIMARY_VQ;
 		}
 	}
-
+    System_printf("End of MessageQCopyS2S_init\n");
     Log_print0(Diags_EXIT, "<-- "FXNN);
 }
 #undef FXNN
@@ -438,6 +441,7 @@ MessageQCopyS2S_Handle MessageQCopyS2S_rawCreate(MessageQCopyS2S_EndptPool* pool
 
 MessageQCopyS2S_Handle MessageQCopyS2S_create(UInt32 reserved, UInt32 * endpoint)
 {
+    System_printf("MessageQCopyS2S_create %d\n", reserved);
     return MessageQCopyS2S_rawCreate(&module.global_pool, reserved, endpoint);
 }
 
@@ -573,11 +577,13 @@ Int MessageQCopyS2S_rawSend(UInt32 vqId,
 	/* Send to remote processor: */
 	key = GateSwi_enter(module.gateSwi);  // Protect vring structs.
 	token = VirtQueueS2S_getAvailBuf(vq, (Void **)&msg, &length);
+	System_printf("token = %d\n", token);
 	GateSwi_leave(module.gateSwi, key);
 
 	if(length < bufSize) {
 		status = MessageQCopyS2S_E_FAIL;
 		Log_print1(Diags_STATUS, FXNN": buffer from vq %d to small for data", vqId);
+		System_printf("buffer from vq %d to small for data\n", vqId);
 		return status;
 	}
 	if (token >= 0) {
@@ -595,6 +601,7 @@ Int MessageQCopyS2S_rawSend(UInt32 vqId,
 		GateSwi_leave(module.gateSwi, key);
 	} else {
 		status = MessageQCopyS2S_E_FAIL;
+		System_printf("getAvailBuf failed!\n");
 		Log_print0(Diags_STATUS, FXNN": getAvailBuf failed!");
 	}
 
