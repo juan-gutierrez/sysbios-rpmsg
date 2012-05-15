@@ -60,7 +60,7 @@ IpcMemory_MemEntry *IpcMemory_getEntry(UInt index)
     offset = (UInt32)((Char *)table + table->offset[index]);
     type = (UInt32 *)offset;
     if (*type == TYPE_CARVEOUT || *type == TYPE_DEVMEM) {
-        entry = (IpcMemory_MemEntry *) ((Char *)table + offset);
+        entry = (IpcMemory_MemEntry *) ((Char *)offset);
     }
 
     return (entry);
@@ -94,7 +94,7 @@ Int IpcMemory_virtToPhys(UInt32 va, UInt32 *pa)
 
     for (i = 0; i < *IpcMemory_module->pSize; i++) {
         entry = IpcMemory_getEntry(i);
-        if (!entry && va >= entry->da && va < (entry->da + entry->len)) {
+        if (entry && va >= entry->da && va < (entry->da + entry->len)) {
                 offset = va - entry->da;
                 *pa = entry->pa + offset;
                 return (IpcMemory_S_SUCCESS);
@@ -117,7 +117,7 @@ Int IpcMemory_physToVirt(UInt32 pa, UInt32 *va)
 
     for (i = 0; i < *IpcMemory_module->pSize; i++) {
         entry = IpcMemory_getEntry(i);
-        if (!entry && pa >= entry->pa && pa < (entry->pa + entry->len)) {
+        if (entry && pa >= entry->pa && pa < (entry->pa + entry->len)) {
                 offset = pa - entry->pa;
                 *va = entry->da + offset;
                 return (IpcMemory_S_SUCCESS);

@@ -99,5 +99,5 @@ function module$static$init(obj, params)
 
     /* Assign the addresses for the module state variables */
     obj.pTable = addr;
-    obj.pSize = addr + 0x8;
+    obj.pSize = addr + 0x4;
 }
